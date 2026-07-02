@@ -1,0 +1,11 @@
+{
+  "name": "demo-migration-swarm",
+  "version": "1.0.0",
+  "description": "Small vanilla HTML/CSS/JS demo app - the fixed migration target for the Migration Swarm hackathon project.",
+  "private": true,
+  "scripts": {
+    "start": "npx http-server -p 8080 .",
+    "test": "node --test test/*.test.js"
+  },
+  "license": "MIT"
+}
