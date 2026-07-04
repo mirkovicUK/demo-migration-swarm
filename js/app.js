@@ -1,15 +1,29 @@
-// app.js - wires the DOM to the pure todo.js functions + storage.js
+```typescript
+// app.ts - wires the DOM to the pure todo functions + storage
 // persistence. Vanilla JS, no framework, no build step (this is the
 // migration source; the target is Vite + TypeScript + Vitest).
 
-(function () {
-  const form = document.getElementById("todo-form");
-  const input = document.getElementById("todo-input");
-  const list = document.getElementById("todo-list");
-  const countEl = document.getElementById("todo-count");
-  const doneCountEl = document.getElementById("todo-done-count");
+interface Todo {
+  id: number;
+  text: string;
+  done: boolean;
+}
 
-  let todos = loadTodos();
+declare function loadTodos(): Todo[];
+declare function saveTodos(todos: Todo[]): void;
+declare function addTodo(todos: Todo[], text: string): Todo[];
+declare function toggleTodo(todos: Todo[], id: number): Todo[];
+declare function removeTodo(todos: Todo[], id: number): Todo[];
+declare function countDone(todos: Todo[]): number;
+
+(() => {
+  const form = document.getElementById("todo-form") as HTMLFormElement;
+  const input = document.getElementById("todo-input") as HTMLInputElement;
+  const list = document.getElementById("todo-list") as HTMLUListElement;
+  const countEl = document.getElementById("todo-count") as HTMLSpanElement;
+  const doneCountEl = document.getElementById("todo-done-count") as HTMLSpanElement;
+
+  let todos: Todo[] = loadTodos();
 
   function render() {
     list.innerHTML = "";
@@ -51,7 +65,7 @@
     doneCountEl.textContent = String(countDone(todos));
   }
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", (event: Event) => {
     event.preventDefault();
     const value = input.value;
     if (!value.trim()) return;
@@ -63,3 +77,4 @@
 
   render();
 })();
+```
