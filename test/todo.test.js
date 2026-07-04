@@ -1,21 +1,22 @@
-// todo.test.js - unit tests for the pure todo.js state-transition functions.
+```typescript
+// todo.test.ts - unit tests for the pure todo.ts state-transition functions.
 // Run with: node --test test/
 // (No test framework dependency; uses Node's built-in test runner.)
 
-const test = require("node:test");
-const assert = require("node:assert/strict");
-const path = require("node:path");
-const fs = require("node:fs");
+import * as test from "node:test";
+import * as assert from "node:assert/strict";
+import * as path from "node:path";
+import * as fs from "node:fs";
 
-// todo.js is written as browser globals (no module.exports), so load it into
+// todo.ts is written as browser globals (no module.exports), so load it into
 // this test's scope the same simple way the page does: read + eval in a
 // minimal sandboxed function scope. This keeps the source file itself
 // framework-free, matching the "vanilla JS, no build step" migration source.
 const todoSrc = fs.readFileSync(
-  path.join(__dirname, "..", "js", "todo.js"),
+  path.join(__dirname, "..", "ts", "todo.ts"),
   "utf8"
 );
-const sandbox = {};
+const sandbox: any = {};
 new Function(
   "exports",
   todoSrc +
@@ -49,8 +50,8 @@ test("toggleTodo flips done for the matching id only", () => {
   const b = createTodo("b");
   const todos = [a, b];
   const toggled = toggleTodo(todos, a.id);
-  assert.equal(toggled.find((t) => t.id === a.id).done, true);
-  assert.equal(toggled.find((t) => t.id === b.id).done, false);
+  assert.equal(toggled.find((t: any) => t.id === a.id).done, true);
+  assert.equal(toggled.find((t: any) => t.id === b.id).done, false);
 });
 
 test("removeTodo drops the matching id", () => {
@@ -67,3 +68,4 @@ test("countDone counts only done todos", () => {
   const c = { ...createTodo("c"), done: true };
   assert.equal(countDone([a, b, c]), 2);
 });
+```
