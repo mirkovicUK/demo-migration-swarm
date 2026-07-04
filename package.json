@@ -1,11 +1,21 @@
 {
-  "name": "demo-migration-swarm",
-  "version": "1.0.0",
-  "description": "Small vanilla HTML/CSS/JS demo app - the fixed migration target for the Migration Swarm hackathon project.",
+  "name": "typescript-vite-app",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "npx http-server -p 8080 .",
-    "test": "node --test test/*.test.js"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
-  "license": "MIT"
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8"
+  }
 }
