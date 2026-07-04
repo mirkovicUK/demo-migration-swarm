@@ -1,15 +1,33 @@
-// app.js - wires the DOM to the pure todo.js functions + storage.js
+```typescript
+// app.ts - wires the DOM to the pure todo functions + storage
 // persistence. Vanilla JS, no framework, no build step (this is the
 // migration source; the target is Vite + TypeScript + Vitest).
 
-(function () {
-  const form = document.getElementById("todo-form");
-  const input = document.getElementById("todo-input");
-  const list = document.getElementById("todo-list");
-  const countEl = document.getElementById("todo-count");
-  const doneCountEl = document.getElementById("todo-done-count");
+declare global {
+  interface Window {
+    toggleTodo: (todos: Todo[], id: number) => Todo[];
+    removeTodo: (todos: Todo[], id: number) => Todo[];
+    addTodo: (todos: Todo[], text: string) => Todo[];
+    saveTodos: (todos: Todo[]) => void;
+    loadTodos: () => Todo[];
+    countDone: (todos: Todo[]) => number;
+  }
+}
 
-  let todos = loadTodos();
+interface Todo {
+  id: number;
+  text: string;
+  done: boolean;
+}
+
+(() => {
+  const form = document.getElementById("todo-form") as HTMLFormElement;
+  const input = document.getElementById("todo-input") as HTMLInputElement;
+  const list = document.getElementById("todo-list") as HTMLUListElement;
+  const countEl = document.getElementById("todo-count") as HTMLElement;
+  const doneCountEl = document.getElementById("todo-done-count") as HTMLElement;
+
+  let todos: Todo[] = loadTodos();
 
   function render() {
     list.innerHTML = "";
@@ -63,3 +81,4 @@
 
   render();
 })();
+```
