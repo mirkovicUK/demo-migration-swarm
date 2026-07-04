@@ -1,11 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TypeScript App</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo Demo</title>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <script type="module" src="./src/main.ts"></script>
+  <main class="app">
+    <h1>Todo List</h1>
+    <form id="todo-form">
+      <input id="todo-input" type="text" placeholder="Add a task..." required />
+      <button type="submit">Add</button>
+    </form>
+    <ul id="todo-list"></ul>
+    <p class="stats">
+      <span id="todo-count">0</span> item(s), <span id="todo-done-count">0</span> done
+    </p>
+  </main>
+
+  <script type="module" src="./js/storage.ts"></script>
+  <script type="module" src="./js/todo.ts"></script>
+  <script type="module" src="./js/app.ts"></script>
 </body>
 </html>
