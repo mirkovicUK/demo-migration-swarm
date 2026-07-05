@@ -1,0 +1,1 @@
+console.log('TypeScript + Vite app running!');
