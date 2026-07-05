@@ -1,22 +1,47 @@
-import { Money, zero, add, subtract, negate, isZero, isPositive, isNegative, compare, DEFAULT_CURRENCY } from "./money.js";
-import { computeShares, sharesSumTo } from "./split.js";
+// balances.ts — the settlement engine. Given a list of expenses, work out each
+// member's net position and then the minimal set of payments that settles all
+// debts. Depends on money.ts, expense.ts and split.ts — the deepest node in the
+// chain, so it is migrated last and recalls the Decisions made for all three.
+
+import {
+  Money,
+  money,
+  zero,
+  add,
+  subtract,
+  negate,
+  isZero,
+  isPositive,
+  isNegative,
+  compare,
+  DEFAULT_CURRENCY,
+} from "./money.js";
 import { Expense } from "./expense.js";
+import { computeShares, sharesSumTo } from "./split.js";
 
-function resolveCurrency(expenses: Expense[], currency?: string): string {
-  if (currency) return currency;
-  if (expenses.length > 0 && expenses[0].amount) {
-    return expenses[0].amount.currency;
-  }
-  return DEFAULT_CURRENCY;
+export interface Transfer {
+  from: string;
+  to: string;
+  amount: Money;
 }
 
-interface BalanceMap {
-  [memberId: string]: Money;
+export interface SettlementSummary {
+  balances: Record<string, Money>;
+  transfers: Transfer[];
+  transferCount: number;
 }
 
-function computeBalances(expenses: Expense[], currency?: string): BalanceMap {
+export interface SettlementValidation {
+  settled: boolean;
+  residual: Record<string, Money>;
+}
+
+// Net balance per member: positive = the group owes them (they overpaid),
+// negative = they owe the group. Sums to zero across all members.
+// Returns { [memberId]: Money }.
+export function computeBalances(expenses: Expense[], currency?: string): Record<string, Money> {
   const cur = resolveCurrency(expenses, currency);
-  const net: BalanceMap = {};
+  const net: Record<string, Money> = {};
 
   function bump(id: string, delta: Money): void {
     if (!net[id]) net[id] = zero(cur);
@@ -29,7 +54,9 @@ function computeBalances(expenses: Expense[], currency?: string): BalanceMap {
     if (!sharesSumTo(shares, expense.amount)) {
       throw new Error("shares do not sum to amount for expense " + expense.id);
     }
+    // The payer is credited the full amount they fronted...
     bump(expense.paidBy, expense.amount);
+    // ...and every participant is debited their share.
     const ids = Object.keys(shares);
     for (let j = 0; j < ids.length; j++) {
       bump(ids[j], negate(shares[ids[j]]));
@@ -38,32 +65,18 @@ function computeBalances(expenses: Expense[], currency?: string): BalanceMap {
   return net;
 }
 
-interface Creditor {
-  id: string;
-  amount: Money;
-}
-
-interface Debtor {
-  id: string;
-  amount: Money;
-}
-
-interface Transfer {
-  from: string;
-  to: string;
-  amount: Money;
-}
-
-function simplifyDebts(balances: BalanceMap): Transfer[] {
+// Turn net balances into a minimal-ish list of settlement transfers using a
+// greedy largest-creditor / largest-debtor match. Returns an array of
+// { from, to, amount } where `amount` is a positive Money.
+export function simplifyDebts(balances: Record<string, Money>): Transfer[] {
   const entries = Object.keys(balances).map((id) => ({
     id: id,
     balance: balances[id],
   }));
   if (entries.length === 0) return [];
 
-  const currency = entries[0].balance.currency;
-  const creditors: Creditor[] = [];
-  const debtors: Debtor[] = [];
+  const creditors: { id: string; amount: Money }[] = [];
+  const debtors: { id: string; amount: Money }[] = [];
   for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
     if (isPositive(e.balance)) {
@@ -73,6 +86,7 @@ function simplifyDebts(balances: BalanceMap): Transfer[] {
     }
   }
 
+  // Largest first so we clear big imbalances in fewer transfers.
   creditors.sort((a, b) => compare(b.amount, a.amount));
   debtors.sort((a, b) => compare(b.amount, a.amount));
 
@@ -94,13 +108,8 @@ function simplifyDebts(balances: BalanceMap): Transfer[] {
   return transfers;
 }
 
-interface SettlementSummary {
-  balances: BalanceMap;
-  transfers: Transfer[];
-  transferCount: number;
-}
-
-function settlementSummary(expenses: Expense[], currency?: string): SettlementSummary {
+// Convenience: everything a UI needs in one shot.
+export function settlementSummary(expenses: Expense[], currency?: string): SettlementSummary {
   const balances = computeBalances(expenses, currency);
   const transfers = simplifyDebts(balances);
   return {
@@ -110,19 +119,19 @@ function settlementSummary(expenses: Expense[], currency?: string): SettlementSu
   };
 }
 
-function balanceFor(balances: BalanceMap, memberId: string): Money {
+// How much a single member owes (negative net) or is owed (positive net).
+export function balanceFor(balances: Record<string, Money>, memberId: string): Money {
   return balances[memberId] || zero(DEFAULT_CURRENCY);
 }
 
-interface DebtMatrix {
-  [debtor: string]: {
-    [creditor: string]: Money;
-  };
-}
-
-function debtMatrix(expenses: Expense[], currency?: string): DebtMatrix {
+// Pairwise gross debt matrix BEFORE simplification: matrix[debtor][creditor] is
+// the Money the debtor owes the creditor across all expenses, attributing each
+// participant's share directly to the member who paid. Useful for a detailed
+// "who owes whom, and for what" breakdown in the UI, and a good check that
+// simplifyDebts never moves more money than actually changed hands.
+export function debtMatrix(expenses: Expense[], currency?: string): Record<string, Record<string, Money>> {
   const cur = resolveCurrency(expenses, currency);
-  const matrix: DebtMatrix = {};
+  const matrix: Record<string, Record<string, Money>> = {};
 
   function owe(debtor: string, creditor: string, amount: Money): void {
     if (debtor === creditor) return;
@@ -136,13 +145,15 @@ function debtMatrix(expenses: Expense[], currency?: string): DebtMatrix {
     const shares = computeShares(expense);
     const ids = Object.keys(shares);
     for (let j = 0; j < ids.length; j++) {
+      // each participant owes their share to whoever paid
       owe(ids[j], expense.paidBy, shares[ids[j]]);
     }
   }
   return matrix;
 }
 
-function totalTransferred(transfers: Transfer[]): Money {
+// Total value of a list of transfers (used to sanity-check a settlement plan).
+export function totalTransferred(transfers: Transfer[]): Money {
   if (transfers.length === 0) return zero(DEFAULT_CURRENCY);
   let acc = zero(transfers[0].amount.currency);
   for (let i = 0; i < transfers.length; i++) {
@@ -151,13 +162,11 @@ function totalTransferred(transfers: Transfer[]): Money {
   return acc;
 }
 
-interface SettlementValidation {
-  settled: boolean;
-  residual: BalanceMap;
-}
-
-function validateSettlement(balances: BalanceMap, transfers: Transfer[]): SettlementValidation {
-  const residual: BalanceMap = {};
+// Validate that applying `transfers` to `balances` settles everyone to zero.
+// Returns { settled: boolean, residual: { [id]: Money } } so a UI can surface
+// any member the plan failed to clear (should never happen, but cheap to prove).
+export function validateSettlement(balances: Record<string, Money>, transfers: Transfer[]): SettlementValidation {
+  const residual: Record<string, Money> = {};
   const ids = Object.keys(balances);
   for (let i = 0; i < ids.length; i++) {
     residual[ids[i]] = balances[ids[i]];
@@ -166,6 +175,7 @@ function validateSettlement(balances: BalanceMap, transfers: Transfer[]): Settle
     const t = transfers[i];
     if (!residual[t.from]) residual[t.from] = zero(t.amount.currency);
     if (!residual[t.to]) residual[t.to] = zero(t.amount.currency);
+    // a payment from debtor→creditor raises the debtor's net, lowers creditor's
     residual[t.from] = add(residual[t.from], t.amount);
     residual[t.to] = subtract(residual[t.to], t.amount);
   }
@@ -184,12 +194,10 @@ function minMoney(a: Money, b: Money): Money {
   return compare(a, b) <= 0 ? a : b;
 }
 
-export {
-  computeBalances,
-  simplifyDebts,
-  settlementSummary,
-  balanceFor,
-  debtMatrix,
-  totalTransferred,
-  validateSettlement,
-};
+function resolveCurrency(expenses: Expense[], currency?: string): string {
+  if (currency) return currency;
+  if (expenses.length > 0 && expenses[0].amount) {
+    return expenses[0].amount.currency;
+  }
+  return DEFAULT_CURRENCY;
+}
