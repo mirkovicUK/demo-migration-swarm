@@ -1,9 +1,9 @@
 // storage.ts - tiny localStorage wrapper for persisting the todo list.
-// TypeScript module, no build step, no dependencies (migrated from JS).
+// Vanilla JS, no build step, no dependencies (this is the migration source).
 
 const STORAGE_KEY = "demo-migration-swarm.todos";
 
-export function loadTodos(): string[] {
+export function loadTodos(): Todo[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
@@ -14,6 +14,6 @@ export function loadTodos(): string[] {
   }
 }
 
-export function saveTodos(todos: string[]): void {
+export function saveTodos(todos: Todo[]): void {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
 }
