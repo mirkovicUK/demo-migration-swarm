@@ -19,8 +19,9 @@
     </p>
   </main>
 
-  <script src="js/storage.js"></script>
-  <script src="js/todo.js"></script>
-  <script src="js/app.js"></script>
+  <script type="module">
+    import { initApp } from './js/app.js';
+    initApp();
+  </script>
 </body>
 </html>
