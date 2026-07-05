@@ -1,7 +1,7 @@
 import { describe, it, assert, expect } from "vitest";
 
-import { money } from "../js/money.js";
-import { createExpense, validateExpense, totalOf } from "../js/expense.js";
+import { money } from "../js/money";
+import { createExpense, validateExpense, totalOf } from "../js/expense";
 
 function baseInput(overrides) {
   return Object.assign(
@@ -39,7 +39,7 @@ describe("createExpense", () => {
         split: { kind: "percentage", values: { m1: 40, m2: 40 } },
       })
     );
-    expect(problems.some((p) => p.code === "PERCENT_NOT_100")).toBe(true);
+    assert.ok(problems.some((p) => p.code === "PERCENT_NOT_100"));
   });
 
   it("flags exact amounts that do not sum to the total", () => {
@@ -51,7 +51,7 @@ describe("createExpense", () => {
         },
       })
     );
-    expect(problems.some((p) => p.code === "EXACT_MISMATCH")).toBe(true);
+    assert.ok(problems.some((p) => p.code === "EXACT_MISMATCH"));
   });
 
   it("payer-not-sharing is a soft warning, not a hard failure", () => {
@@ -59,9 +59,7 @@ describe("createExpense", () => {
     const e = createExpense(baseInput({ paidBy: "m3" }));
     assert.equal(e.paidBy, "m3");
   });
-});
 
-describe("totalOf", () => {
   it("sums expense amounts", () => {
     const a = createExpense(baseInput());
     const b = createExpense(baseInput({ amount: money(1500, "USD") }));
