@@ -1,9 +1,11 @@
-import { createExpense, totalOf } from "./expense.js";
-import { settlementSummary } from "./balances.js";
-import { DEFAULT_CURRENCY } from "./money.js";
-import type { Money } from "./money.js";
-import type { Expense, ExpenseInput } from "./expense.js";
-import type { SettlementSummary } from "./balances.js";
+// group.ts — mutable-ish group state (members + expenses) on top of the pure
+// domain modules. Depends on expense.js and balances.js. Kept as plain data +
+// pure transition functions (each returns a new group) so it stays testable and
+// mirrors the todo.js style of the original demo.
+
+import { createExpense, totalOf, type Expense, type ExpenseInput } from "./expense.js";
+import { settlementSummary, type SettlementSummary } from "./balances.js";
+import { DEFAULT_CURRENCY, type Money } from "./money.js";
 
 let nextMemberId = 1;
 
@@ -36,6 +38,7 @@ export function addMember(group: Group, displayName: string): Group {
 }
 
 export function removeMember(group: Group, memberId: string): Group {
+  // Refuse if the member is referenced by any expense (data integrity).
   const referenced = group.expenses.some(
     (e) => e.paidBy === memberId || e.participants.indexOf(memberId) !== -1
   );
