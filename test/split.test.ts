@@ -15,7 +15,7 @@ function expenseWith(split: any) {
   });
 }
 
-function values(shares: Record<string, { amountMinor: number; currency: string }>) {
+function values(shares: Record<string, any>) {
   return Object.keys(shares).map((k) => shares[k]);
 }
 
