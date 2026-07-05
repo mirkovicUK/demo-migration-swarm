@@ -1,11 +1,14 @@
-// group.ts — mutable-ish group state (members + expenses) on top of the pure
-// domain modules. Depends on expense.ts and balances.ts. Kept as plain data +
+// group.js — mutable-ish group state (members + expenses) on top of the pure
+// domain modules. Depends on expense.js and balances.js. Kept as plain data +
 // pure transition functions (each returns a new group) so it stays testable and
-// mirrors the todo.ts style of the original demo.
+// mirrors the todo.js style of the original demo.
 
-import { createExpense, totalOf, Expense, ExpenseInput } from "./expense.js";
-import { settlementSummary, SettlementSummary } from "./balances.js";
-import { DEFAULT_CURRENCY, Money } from "./money.js";
+import { createExpense, totalOf } from "./expense.js";
+import { settlementSummary } from "./balances.js";
+import { DEFAULT_CURRENCY } from "./money.js";
+import { Money } from "./money.js";
+import { Expense, ExpenseInput } from "./expense.js";
+import { SettlementSummary } from "./balances.js";
 
 let nextMemberId = 1;
 
