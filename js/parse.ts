@@ -1,4 +1,4 @@
-// parse.ts — the deliberately messy / ambiguous module. It parses free-text
+// parse.js — the deliberately messy / ambiguous module. It parses free-text
 // user input ("dinner 42.50 usd") into a structured draft. It uses:
 //   - a CONDITIONAL-SHAPE return (a discriminated union: {ok:true,value} vs
 //     {ok:false,error}) — genuinely awkward to type, and a good stress test for
@@ -8,7 +8,8 @@
 //   - loose coercions (== , Number(...)) on purpose.
 // Depends on money.js.
 
-import { fromDecimal, DEFAULT_CURRENCY, CURRENCY_MINOR_UNITS, Money } from "./money.js";
+import { fromDecimal, DEFAULT_CURRENCY, CURRENCY_MINOR_UNITS } from "./money.js";
+import type { Money } from "./money.js";
 
 // token aliases → canonical currency codes; accessed dynamically by user token.
 export const CURRENCY_ALIASES: Record<string, string> = {
@@ -26,10 +27,25 @@ export const CURRENCY_ALIASES: Record<string, string> = {
   jpy: "JPY",
 };
 
+export interface ParseSuccess {
+  ok: true;
+  value: {
+    description: string;
+    amount: Money;
+  };
+}
+
+export interface ParseFailure {
+  ok: false;
+  error: string;
+}
+
+export type ParseResult = ParseSuccess | ParseFailure;
+
 // Parse a line like "Groceries 42.50 eur" or "12 lunch".
 // Returns { ok: true, value: { description, amount } }
 //      or { ok: false, error: string }.  <-- conditional shape
-export function parseExpenseLine(line: unknown): { ok: true; value: { description: string; amount: Money; }; } | { ok: false; error: string; } {
+export function parseExpenseLine(line: unknown): ParseResult {
   if (line == null || String(line).trim() === "") {
     return { ok: false, error: "empty input" };
   }
@@ -44,7 +60,8 @@ export function parseExpenseLine(line: unknown): { ok: true; value: { descriptio
     const lower = raw.toLowerCase();
 
     // dynamic property access on the alias map (implicit-any under non-strict TS)
-    const aliased = CURRENCY_ALIASES[lower] || CURRENCY_ALIASES[raw];
+    const aliased =
+      (CURRENCY_ALIASES as any)[lower] || (CURRENCY_ALIASES as any)[raw];
     if (aliased) {
       currency = aliased;
       continue;
