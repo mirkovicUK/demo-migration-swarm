@@ -4,13 +4,13 @@
 
 let nextId = 1;
 
-interface Todo {
+export interface Todo {
   id: number;
   text: string;
   done: boolean;
 }
 
-export function createTodo(text: string): Todo {
+export function createTodo(text: unknown): Todo {
   const trimmed = String(text).trim();
   if (!trimmed) {
     throw new Error("todo text must not be empty");
@@ -18,12 +18,14 @@ export function createTodo(text: string): Todo {
   return { id: nextId++, text: trimmed, done: false };
 }
 
-export function addTodo(todos: Todo[], text: string): Todo[] {
+export function addTodo(todos: Todo[], text: unknown): Todo[] {
   return [...todos, createTodo(text)];
 }
 
 export function toggleTodo(todos: Todo[], id: number): Todo[] {
-  return todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t));
+  return todos.map((t) =>
+    t.id === id ? { ...t, done: !t.done } : t
+  );
 }
 
 export function removeTodo(todos: Todo[], id: number): Todo[] {
