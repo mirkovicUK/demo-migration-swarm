@@ -1,10 +1,10 @@
-// split.js — turns an Expense's split rule into concrete per-participant Money
-// shares that sum EXACTLY to the expense amount. Depends on money.js (for
-// allocate/multiply) and expense.js (for the split kinds). Two import edges →
+// split.ts — turns an Expense's split rule into concrete per-participant Money
+// shares that sum EXACTLY to the expense amount. Depends on money.ts (for
+// allocate/multiply) and expense.ts (for the split kinds). Two import edges →
 // this node sits below both in the DAG.
 
-import { money, zero, allocate, multiply, add, equals } from "./money.js";
-import { isSplitKind, Expense, SplitRule } from "./expense.js";
+import { Money, money, zero, allocate, multiply, add, equals } from "./money.js";
+import { Expense, isSplitKind } from "./expense.js";
 
 // Compute { [participantId]: Money } shares for an expense. Guarantees the
 // shares sum back to expense.amount (no lost/created minor units), delegating
@@ -21,13 +21,13 @@ export function computeShares(expense: Expense): Record<string, Money> {
     return byEqual(amount, participants);
   }
   if (kind === "shares") {
-    return byShares(amount, participants, expense.split.values);
+    return byShares(amount, participants, expense.split.values as Record<string, number>);
   }
   if (kind === "percentage") {
-    return byPercentage(amount, participants, expense.split.values);
+    return byPercentage(amount, participants, expense.split.values as Record<string, number>);
   }
   // exact
-  return byExact(amount, participants, expense.split.values);
+  return byExact(amount, participants, expense.split.values as Record<string, number | Money>);
 }
 
 function byEqual(amount: Money, participants: string[]): Record<string, Money> {
@@ -36,11 +36,7 @@ function byEqual(amount: Money, participants: string[]): Record<string, Money> {
   return zip(participants, parts);
 }
 
-function byShares(
-  amount: Money,
-  participants: string[],
-  values: Record<string, number>
-): Record<string, Money> {
+function byShares(amount: Money, participants: string[], values: Record<string, number>): Record<string, Money> {
   const weights = participants.map((pid) => {
     const w = Number(values[pid]);
     if (!Number.isInteger(w) || w < 0) {
@@ -54,11 +50,7 @@ function byShares(
 
 // Percentages can be fractional; multiply then fix any rounding drift by
 // pushing the leftover minor units onto the largest share (keeps the sum exact).
-function byPercentage(
-  amount: Money,
-  participants: string[],
-  values: Record<string, number>
-): Record<string, Money> {
+function byPercentage(amount: Money, participants: string[], values: Record<string, number>): Record<string, Money> {
   const shares: Record<string, Money> = {};
   let allocated = zero(amount.currency);
   let maxId = participants[0];
@@ -81,11 +73,7 @@ function byPercentage(
   return shares;
 }
 
-function byExact(
-  amount: Money,
-  participants: string[],
-  values: Record<string, number | Money>
-): Record<string, Money> {
+function byExact(amount: Money, participants: string[], values: Record<string, number | Money>): Record<string, Money> {
   const shares: Record<string, Money> = {};
   for (let i = 0; i < participants.length; i++) {
     const pid = participants[i];
@@ -96,7 +84,7 @@ function byExact(
 }
 
 // Verify a shares map sums exactly to the expected amount (used by tests and
-// balances.js as a safety assertion).
+// balances.ts as a safety assertion).
 export function sharesSumTo(shares: Record<string, Money>, expected: Money): boolean {
   let acc = zero(expected.currency);
   const keys = Object.keys(shares);
