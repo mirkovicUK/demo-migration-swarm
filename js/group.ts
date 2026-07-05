@@ -1,12 +1,31 @@
-import { Money } from './money.js';
-import { Expense, ExpenseInput } from './expense.js';
-import { settlementSummary } from './balances.js';
-import { DEFAULT_CURRENCY } from './money.js';
+// group.ts — mutable-ish group state (members + expenses) on top of the pure
+// domain modules. Depends on expense.js and balances.js. Kept as plain data +
+// pure transition functions (each returns a new group) so it stays testable and
+// mirrors the todo.js style of the original demo.
+
+import { createExpense, totalOf, Expense, ExpenseInput } from "./expense.js";
+import { settlementSummary, SettlementSummary } from "./balances.js";
+import { DEFAULT_CURRENCY, Money } from "./money.js";
+
+export interface Member {
+  id: string;
+  name: string;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  currency: string;
+  members: Member[];
+  expenses: Expense[];
+}
+
+// Augment the Error interface to allow a custom `code` property
+interface GroupError extends Error {
+  code: string;
+}
 
 let nextMemberId = 1;
-
-export interface Member { id: string; name: string; }
-export interface Group { id: string; name: string; currency: string; members: Member[]; expenses: Expense[]; }
 
 export function createGroup(name?: string, currency?: string): Group {
   return {
@@ -19,16 +38,17 @@ export function createGroup(name?: string, currency?: string): Group {
 }
 
 export function addMember(group: Group, displayName: string): Group {
-  const member = { id: "m" + nextMemberId++, name: String(displayName) };
+  const member: Member = { id: "m" + nextMemberId++, name: String(displayName) };
   return withMembers(group, group.members.concat([member]));
 }
 
 export function removeMember(group: Group, memberId: string): Group {
+  // Refuse if the member is referenced by any expense (data integrity).
   const referenced = group.expenses.some(
     (e) => e.paidBy === memberId || e.participants.indexOf(memberId) !== -1
   );
   if (referenced) {
-    const err = new Error("member is referenced by an expense");
+    const err = new Error("member is referenced by an expense") as GroupError;
     err.code = "MEMBER_IN_USE";
     throw err;
   }
@@ -39,7 +59,9 @@ export function removeMember(group: Group, memberId: string): Group {
 }
 
 export function addExpense(group: Group, input: ExpenseInput): Group {
-  const expense = input;
+  const expense = createExpense(
+    Object.assign({}, input, { amount: input.amount })
+  );
   return withExpenses(group, group.expenses.concat([expense]));
 }
 
@@ -56,11 +78,7 @@ export function memberName(group: Group, memberId: string): string {
 }
 
 export function groupTotal(group: Group): Money {
-  let total = { amountMinor: 0, currency: group.currency };
-  for (const expense of group.expenses) {
-    total.amountMinor += expense.amount.amountMinor;
-  }
-  return total;
+  return totalOf(group.expenses, group.currency);
 }
 
 export function groupSettlement(group: Group): SettlementSummary {
@@ -68,9 +86,9 @@ export function groupSettlement(group: Group): SettlementSummary {
 }
 
 function withMembers(group: Group, members: Member[]): Group {
-  return { ...group, members: members };
+  return Object.assign({}, group, { members: members });
 }
 
 function withExpenses(group: Group, expenses: Expense[]): Group {
-  return { ...group, expenses: expenses };
+  return Object.assign({}, group, { expenses: expenses });
 }
