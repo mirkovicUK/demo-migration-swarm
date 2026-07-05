@@ -1,4 +1,4 @@
-// expense.js — the Expense domain model. Depends on money.js (import edge →
+// expense.ts — the Expense domain model. Depends on money.ts (import edge →
 // child of money in the DAG). An Expense records who paid, how much, for which
 // participants, and a split rule. This file is intentionally sizeable (lots of
 // validation branches) so it exceeds the per-file context cap and forces the
@@ -10,20 +10,12 @@ import {
   zero,
   add,
   isPositive,
-  isZero,
   equals,
-  compare,
   DEFAULT_CURRENCY,
-  type Money,
 } from "./money.js";
+import type { Money } from "./money.js";
 
-let nextExpenseId = 1;
-
-// Split kinds an Expense may carry. split.js knows how to turn each of these
-// into concrete per-participant Money shares.
-export const SPLIT_KINDS = ["equal", "exact", "percentage", "shares"] as const;
-
-export type SplitKind = (typeof SPLIT_KINDS)[number];
+export type SplitKind = string;
 
 export interface SplitRule {
   kind: SplitKind;
@@ -58,25 +50,28 @@ export interface ValidationProblem {
   warning: boolean;
 }
 
-export function isSplitKind(value: unknown): value is SplitKind {
-  return SPLIT_KINDS.includes(value as SplitKind);
+// Extend Error to carry extra fields
+interface ExpenseError extends Error {
+  code: string;
+  problems: ValidationProblem[];
 }
 
-// Create a validated Expense. `input` shape:
-//   {
-//     description: string,
-//     amount: Money,
-//     paidBy: string,            // member id
-//     participants: string[],    // member ids sharing the cost
-//     split: { kind, values? },  // values keyed by member id for non-equal
-//     date?: Date | string | number,
-//     category?: string,
-//   }
+let nextExpenseId = 1;
+
+// Split kinds an Expense may carry. split.js knows how to turn each of these
+// into concrete per-participant Money shares.
+export const SPLIT_KINDS: string[] = ["equal", "exact", "percentage", "shares"];
+
+export function isSplitKind(value: unknown): boolean {
+  return SPLIT_KINDS.indexOf(value as string) !== -1;
+}
+
+// Create a validated Expense.
 // Throws an Error with a `.code` on the first validation failure.
 export function createExpense(input: ExpenseInput): Expense {
   const problems = validateExpense(input);
   if (problems.length > 0) {
-    const err = new Error(problems[0].message);
+    const err = new Error(problems[0].message) as ExpenseError;
     err.code = problems[0].code;
     err.problems = problems;
     throw err;
@@ -95,7 +90,7 @@ export function createExpense(input: ExpenseInput): Expense {
 }
 
 // Collect ALL validation problems (not just the first) so a UI can show them
-// together. Returns an array of { code, field, message }.
+// together. Returns an array of ValidationProblem.
 export function validateExpense(input: unknown): ValidationProblem[] {
   const problems: ValidationProblem[] = [];
   if (!input || typeof input !== "object") {
@@ -103,35 +98,39 @@ export function validateExpense(input: unknown): ValidationProblem[] {
     return problems;
   }
 
-  if (typeof input.description !== "string" || !input.description.trim()) {
+  // Cast to a record so we can access properties safely
+  const inp = input as Record<string, unknown>;
+
+  if (typeof inp.description !== "string" || !(inp.description as string).trim()) {
     problems.push(
       problem("EMPTY_DESCRIPTION", "description", "description is required")
     );
   }
 
-  if (!isMoney(input.amount)) {
+  if (!isMoney(inp.amount)) {
     problems.push(problem("BAD_AMOUNT", "amount", "amount must be a Money"));
-  } else if (!isPositive(input.amount)) {
+  } else if (!isPositive(inp.amount as Money)) {
     problems.push(
       problem("NON_POSITIVE_AMOUNT", "amount", "amount must be positive")
     );
   }
 
-  if (typeof input.paidBy !== "string" || !input.paidBy) {
+  if (typeof inp.paidBy !== "string" || !inp.paidBy) {
     problems.push(problem("NO_PAYER", "paidBy", "paidBy is required"));
   }
 
-  if (!Array.isArray(input.participants) || input.participants.length === 0) {
+  if (!Array.isArray(inp.participants) || (inp.participants as string[]).length === 0) {
     problems.push(
       problem("NO_PARTICIPANTS", "participants", "at least one participant")
     );
   } else {
-    if (hasDuplicates(input.participants)) {
+    const participants = inp.participants as string[];
+    if (hasDuplicates(participants)) {
       problems.push(
         problem("DUP_PARTICIPANTS", "participants", "duplicate participant")
       );
     }
-    if (input.paidBy && input.participants.indexOf(input.paidBy) === -1) {
+    if (inp.paidBy && participants.indexOf(inp.paidBy as string) === -1) {
       // The payer is allowed to not be a participant (they paid for others),
       // but it is a common mistake, so surface it as a soft warning code.
       problems.push(
@@ -140,7 +139,11 @@ export function validateExpense(input: unknown): ValidationProblem[] {
     }
   }
 
-  const splitProblems = validateSplit(input.split, input.participants, input.amount);
+  const splitProblems = validateSplit(
+    inp.split,
+    Array.isArray(inp.participants) ? (inp.participants as string[]) : undefined,
+    inp.amount
+  );
   for (let i = 0; i < splitProblems.length; i++) {
     problems.push(splitProblems[i]);
   }
@@ -152,46 +155,56 @@ export function validateExpense(input: unknown): ValidationProblem[] {
   return hard.length > 0 ? hard : [];
 }
 
-export function validateSplit(split: unknown, participants: string[] | undefined, amount: unknown): ValidationProblem[] {
+export function validateSplit(
+  split: unknown,
+  participants: string[] | undefined,
+  amount: unknown
+): ValidationProblem[] {
   const problems: ValidationProblem[] = [];
   if (!split || typeof split !== "object") {
     problems.push(problem("NO_SPLIT", "split", "split is required"));
     return problems;
   }
-  if (!isSplitKind(split.kind)) {
+
+  const s = split as Record<string, unknown>;
+
+  if (!isSplitKind(s.kind)) {
     problems.push(problem("BAD_SPLIT_KIND", "split", "unknown split kind"));
     return problems;
   }
-  if (split.kind === "equal") {
+  if (s.kind === "equal") {
     return problems; // no per-participant values needed
   }
-  if (!split.values || typeof split.values !== "object") {
+  if (!s.values || typeof s.values !== "object") {
     problems.push(
-      problem("NO_SPLIT_VALUES", "split", split.kind + " split needs values")
+      problem("NO_SPLIT_VALUES", "split", s.kind + " split needs values")
     );
     return problems;
   }
+
+  const values = s.values as Record<string, unknown>;
+
   if (Array.isArray(participants)) {
     for (let i = 0; i < participants.length; i++) {
       const pid = participants[i];
-      if (!(pid in split.values)) {
+      if (!(pid in values)) {
         problems.push(
           problem("MISSING_SPLIT_VALUE", "split", "missing value for " + pid)
         );
       }
     }
   }
-  if (split.kind === "percentage") {
-    const totalPct = sumValues(split.values);
+  if (s.kind === "percentage") {
+    const totalPct = sumValues(values);
     if (Math.abs(totalPct - 100) > 0.001) {
       problems.push(
         problem("PERCENT_NOT_100", "split", "percentages must sum to 100")
       );
     }
   }
-  if (split.kind === "exact" && isMoney(amount)) {
-    const total = sumExactValues(split.values, amount.currency);
-    if (!equals(total, amount)) {
+  if (s.kind === "exact" && isMoney(amount)) {
+    const total = sumExactValues(values, (amount as Money).currency);
+    if (!equals(total, amount as Money)) {
       problems.push(
         problem("EXACT_MISMATCH", "split", "exact amounts must sum to total")
       );
@@ -200,14 +213,14 @@ export function validateSplit(split: unknown, participants: string[] | undefined
   return problems;
 }
 
-function normalizeSplit(split: SplitRule, participants: string[]): SplitRule {
+function normalizeSplit(split: SplitRule, _participants: string[]): SplitRule {
   if (split.kind === "equal") {
     return { kind: "equal" };
   }
   const values: Record<string, unknown> = {};
-  const keys = Object.keys(split.values ?? {});
+  const keys = Object.keys(split.values || {});
   for (let i = 0; i < keys.length; i++) {
-    values[keys[i]] = split.values?.[keys[i]];
+    values[keys[i]] = split.values![keys[i]];
   }
   return { kind: split.kind, values: values };
 }
@@ -224,20 +237,25 @@ export function totalOf(expenses: Expense[], currency?: string): Money {
 
 // --- small local helpers -------------------------------------------------
 
-function problem(code: string, field: string, message: string, warning?: boolean): ValidationProblem {
+function problem(
+  code: string,
+  field: string,
+  message: string,
+  warning?: boolean
+): ValidationProblem {
   return { code: code, field: field, message: message, warning: !!warning };
 }
 
-function isMoney(x: unknown): x is Money {
+function isMoney(x: unknown): boolean {
   return (
     !!x &&
     typeof x === "object" &&
-    typeof (x as Money).amountMinor === "number" &&
-    typeof (x as Money).currency === "string"
+    typeof (x as any).amountMinor === "number" &&
+    typeof (x as any).currency === "string"
   );
 }
 
-function hasDuplicates(list: unknown[]): boolean {
+function hasDuplicates(list: string[]): boolean {
   return new Set(list).size !== list.length;
 }
 
@@ -255,13 +273,13 @@ function sumExactValues(obj: Record<string, unknown>, currency: string): Money {
   const keys = Object.keys(obj);
   for (let i = 0; i < keys.length; i++) {
     const v = obj[keys[i]];
-    acc = add(acc, isMoney(v) ? v : money(0, currency));
+    acc = add(acc, isMoney(v) ? (v as Money) : money(0, currency));
   }
   return acc;
 }
 
-function normalizeDate(value: Date | string | number | undefined): Date {
+function normalizeDate(value: Date | string | number | undefined | null): Date {
   if (value === undefined || value === null) return new Date();
-  const d = value instanceof Date ? value : new Date(value);
+  const d = value instanceof Date ? value : new Date(value as string | number);
   return isNaN(d.getTime()) ? new Date() : d;
 }
