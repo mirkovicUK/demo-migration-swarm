@@ -6,7 +6,7 @@
 //   - DYNAMIC PROPERTY ACCESS over a config map (aliases[token]) — under
 //     non-strict TS this stays implicit-any, which is realistic;
 //   - loose coercions (== , Number(...)) on purpose.
-// Depends on money.js.
+// Depends on money.ts.
 
 import { fromDecimal, DEFAULT_CURRENCY, CURRENCY_MINOR_UNITS } from "./money.js";
 import type { Money } from "./money.js";
