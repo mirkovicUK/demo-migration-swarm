@@ -1,13 +1,13 @@
-// backup.js — export/import of a whole group as a portable JSON snapshot. This
-// module is loaded LAZILY by storage.js via a dynamic import() so it only ships
-// when the user actually exports — exercising the migration's dynamic-import
-// edge deriver. Depends on money.js for re-hydrating amounts.
-
 import { money } from "./money.js";
+import { Money } from "./money.js";
 import { Group } from "./group.js";
 
-// Serialize a group to a plain JSON-safe object (Money → {amountMinor,currency}
-// already is JSON-safe, but we stamp a version + timestamp for portability).
+export interface GroupSnapshot {
+  version: number;
+  exportedAt: string;
+  group: Group;
+}
+
 export function exportGroup(group: Group): GroupSnapshot {
   return {
     version: 1,
@@ -16,24 +16,27 @@ export function exportGroup(group: Group): GroupSnapshot {
   };
 }
 
-// Re-hydrate a snapshot, defensively rebuilding Money values so downstream
-// arithmetic (which asserts integer minor units) never sees a malformed amount.
 export function importGroup(snapshot: unknown): Group {
-  if (!snapshot || typeof snapshot !== "object" || !("version" in snapshot) || !("group" in snapshot) || snapshot.version !== 1 || !snapshot.group) {
+  if (
+    !snapshot ||
+    typeof snapshot !== "object" ||
+    (snapshot as GroupSnapshot).version !== 1 ||
+    !(snapshot as GroupSnapshot).group
+  ) {
     throw new Error("unrecognized backup format");
   }
-  const group = snapshot.group;
-  const expenses = (group.expenses || []).map((e: any) =>
+  const raw = snapshot as GroupSnapshot;
+  const group = raw.group;
+  const expenses = (group.expenses || []).map((e) =>
     Object.assign({}, e, { amount: reviveMoney(e.amount) })
   );
-  return Object.assign({}, group, { expenses: expenses });
+  return Object.assign({}, group, { expenses: expenses }) as Group;
 }
 
-function reviveMoney(m: any): import("./money.js").Money {
-  if (!m || typeof m.amountMinor !== "number") {
+function reviveMoney(m: unknown): Money {
+  if (!m || typeof (m as Money).amountMinor !== "number") {
     throw new Error("cannot revive money value");
   }
-  return money(Math.round(m.amountMinor), m.currency);
+  const mon = m as Money;
+  return money(Math.round(mon.amountMinor), mon.currency);
 }
-
-export interface GroupSnapshot { version: number; exportedAt: string; group: Group; }
