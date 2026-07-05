@@ -1,3 +1,8 @@
+// app.ts — DOM wiring for the expense splitter. Top of the dependency DAG:
+// imports group (state), format (display), parse (input), storage (persistence)
+// and money (amount construction). No exports — this is the entry module loaded
+// by index.html via <script type="module">.
+
 import {
   createGroup,
   addMember,
@@ -6,15 +11,14 @@ import {
   memberName,
   groupTotal,
   groupSettlement,
-  type Group,
 } from "./group.js";
 import { formatMoney, formatSigned, pluralize } from "./format.js";
-import { parseExpenseLine, type ParseResult } from "./parse.js";
+import { parseExpenseLine } from "./parse.js";
 import { saveGroup, loadGroup } from "./storage.js";
 
-let group: Group = loadGroup() || seedGroup();
+let group = loadGroup() || seedGroup();
 
-function seedGroup(): Group {
+function seedGroup() {
   let g = createGroup("Trip to Lisbon", "EUR");
   g = addMember(g, "Ada");
   g = addMember(g, "Bruno");
@@ -22,11 +26,11 @@ function seedGroup(): Group {
   return g;
 }
 
-function render(): void {
-  const membersEl = document.getElementById("members") as HTMLElement | null;
-  const expensesEl = document.getElementById("expenses") as HTMLElement | null;
-  const settleEl = document.getElementById("settlement") as HTMLElement | null;
-  const totalEl = document.getElementById("total") as HTMLElement | null;
+function render() {
+  const membersEl = document.getElementById("members");
+  const expensesEl = document.getElementById("expenses");
+  const settleEl = document.getElementById("settlement");
+  const totalEl = document.getElementById("total");
   if (!membersEl || !expensesEl || !settleEl || !totalEl) return;
 
   membersEl.textContent = group.members.map((m) => m.name).join(", ");
@@ -67,14 +71,14 @@ function render(): void {
   });
 }
 
-function persistAndRender(): void {
+function persistAndRender() {
   saveGroup(group);
   render();
 }
 
-function wire(): void {
-  const form = document.getElementById("expense-form") as HTMLFormElement | null;
-  const input = document.getElementById("expense-input") as HTMLInputElement | null;
+function wire() {
+  const form = document.getElementById("expense-form");
+  const input = document.getElementById("expense-input") as HTMLInputElement;
   if (!form || !input) return;
   form.addEventListener("submit", (event) => {
     event.preventDefault();
