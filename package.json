@@ -1,12 +1,18 @@
 {
-  "name": "demo-migration-swarm",
-  "version": "2.0.0",
-  "description": "Vanilla ES-module HTML/CSS/JS expense-splitter - the fixed migration target for the Migration Swarm hackathon project.",
+  "name": "migrated-app",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "npx http-server -p 8080 .",
-    "test": "node --test test/*.test.js"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
   },
-  "license": "MIT"
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0",
+    "vitest": "^1.6.0",
+    "@types/node": "^20.11.0"
+  }
 }
