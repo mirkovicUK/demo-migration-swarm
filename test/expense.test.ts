@@ -1,4 +1,5 @@
-import { describe, it, assert, vi } from "vitest";
+import { describe, it, assert, expect } from "vitest";
+
 import { money } from "../js/money.js";
 import { createExpense, validateExpense, totalOf } from "../js/expense.js";
 
@@ -38,7 +39,7 @@ describe("createExpense rejects a non-positive amount", () => {
 });
 
 describe("validateExpense flags percentages that do not sum to 100", () => {
-  it("should detect percentage sum not equal to 100", () => {
+  it("should detect percentage sum mismatch", () => {
     const problems = validateExpense(
       baseInput({
         split: { kind: "percentage", values: { m1: 40, m2: 40 } },
@@ -49,7 +50,7 @@ describe("validateExpense flags percentages that do not sum to 100", () => {
 });
 
 describe("validateExpense flags exact amounts that do not sum to the total", () => {
-  it("should detect exact amounts sum mismatch", () => {
+  it("should detect exact amount sum mismatch", () => {
     const problems = validateExpense(
       baseInput({
         split: {
@@ -70,7 +71,7 @@ describe("payer-not-sharing is a soft warning, not a hard failure", () => {
 });
 
 describe("totalOf sums expense amounts", () => {
-  it("should sum expenses correctly", () => {
+  it("should correctly sum expense amounts", () => {
     const a = createExpense(baseInput());
     const b = createExpense(baseInput({ amount: money(1500, "USD") }));
     assert.equal(totalOf([a, b], "USD").amountMinor, 4500);
