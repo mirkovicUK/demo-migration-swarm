@@ -27,10 +27,22 @@ export const CURRENCY_ALIASES: Record<string, string> = {
   jpy: "JPY",
 };
 
+export interface ParseSuccess {
+  ok: true;
+  value: { description: string; amount: Money };
+}
+
+export interface ParseFailure {
+  ok: false;
+  error: string;
+}
+
+export type ParseResult = ParseSuccess | ParseFailure;
+
 // Parse a line like "Groceries 42.50 eur" or "12 lunch".
 // Returns { ok: true, value: { description, amount } }
 //      or { ok: false, error: string }.  <-- conditional shape
-export function parseExpenseLine(line: unknown): { ok: true; value: { description: string; amount: Money; }; } | { ok: false; error: string; } {
+export function parseExpenseLine(line: unknown): ParseResult {
   if (line == null || String(line).trim() === "") {
     return { ok: false, error: "empty input" };
   }
