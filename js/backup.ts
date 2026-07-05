@@ -1,10 +1,16 @@
-// backup.js — export/import of a whole group as a portable JSON snapshot. This
+// backup.ts — export/import of a whole group as a portable JSON snapshot. This
 // module is loaded LAZILY by storage.js via a dynamic import() so it only ships
 // when the user actually exports — exercising the migration's dynamic-import
 // edge deriver. Depends on money.js for re-hydrating amounts.
 
-import { money } from "./money.js";
+import { money, type Money } from "./money.js";
 import type { Group } from "./group.js";
+
+export interface GroupSnapshot {
+  version: number;
+  exportedAt: string;
+  group: Group;
+}
 
 // Serialize a group to a plain JSON-safe object (Money → {amountMinor,currency}
 // already is JSON-safe, but we stamp a version + timestamp for portability).
@@ -19,19 +25,21 @@ export function exportGroup(group: Group): GroupSnapshot {
 // Re-hydrate a snapshot, defensively rebuilding Money values so downstream
 // arithmetic (which asserts integer minor units) never sees a malformed amount.
 export function importGroup(snapshot: unknown): Group {
-  if (!snapshot || (snapshot as GroupSnapshot).version !== 1 || !(snapshot as GroupSnapshot).group) {
+  const snap = snapshot as GroupSnapshot | null | undefined;
+  if (!snap || snap.version !== 1 || !snap.group) {
     throw new Error("unrecognized backup format");
   }
-  const group = (snapshot as GroupSnapshot).group;
-  const expenses = ((group.expenses || []) as any[]).map((e: any) =>
+  const group = snap.group;
+  const expenses = (group.expenses || []).map((e) =>
     Object.assign({}, e, { amount: reviveMoney(e.amount) })
   );
   return Object.assign({}, group, { expenses: expenses });
 }
 
-function reviveMoney(m: any): typeof m {
-  if (!m || typeof m.amountMinor !== "number") {
+function reviveMoney(m: unknown): Money {
+  const mo = m as { amountMinor?: unknown; currency?: string } | null | undefined;
+  if (!mo || typeof mo.amountMinor !== "number") {
     throw new Error("cannot revive money value");
   }
-  return money(Math.round(m.amountMinor), m.currency);
+  return money(Math.round(mo.amountMinor), mo.currency);
 }
