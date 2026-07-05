@@ -1,17 +1,17 @@
-// app.ts - wires the DOM to the pure todo functions + storage
-// persistence. Vanilla JS, no framework, no build step (this is the
-// migration source; the target is Vite + TypeScript + Vitest).
+// js/app.ts
+import {
+  addTodo, toggleTodo, removeTodo, countDone, type Todo
+} from './todo';
+import { saveTodos, loadTodos } from './storage';
 
-import { loadTodos, saveTodos, toggleTodo, removeTodo, countDone, addTodo } from './storage';
-
-export function initTodoApp(): void {
+(() => {
   const form = document.getElementById('todo-form') as HTMLFormElement;
   const input = document.getElementById('todo-input') as HTMLInputElement;
   const list = document.getElementById('todo-list') as HTMLUListElement;
-  const countEl = document.getElementById('todo-count') as HTMLElement;
-  const doneCountEl = document.getElementById('todo-done-count') as HTMLElement;
+  const countEl = document.getElementById('todo-count') as HTMLSpanElement;
+  const doneCountEl = document.getElementById('todo-done-count') as HTMLSpanElement;
 
-  let todos = loadTodos();
+  let todos: Todo[] = loadTodos();
 
   function render(): void {
     list.innerHTML = '';
@@ -36,7 +36,7 @@ export function initTodoApp(): void {
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.className = 'remove-btn';
-      removeBtn.textContent = '×';
+      removeBtn.textContent = '\u00d7';
       removeBtn.addEventListener('click', () => {
         todos = removeTodo(todos, todo.id);
         saveTodos(todos);
@@ -64,4 +64,4 @@ export function initTodoApp(): void {
   });
 
   render();
-}
+})();
