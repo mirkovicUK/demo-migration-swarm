@@ -1,7 +1,7 @@
 // group.ts — mutable-ish group state (members + expenses) on top of the pure
 // domain modules. Depends on expense.ts and balances.ts. Kept as plain data +
 // pure transition functions (each returns a new group) so it stays testable and
-// mirrors the todo.ts style of the original demo.
+// mirrors the todo.js style of the original demo.
 
 import { createExpense, totalOf, Expense, ExpenseInput } from "./expense.js";
 import { settlementSummary, SettlementSummary } from "./balances.js";
@@ -33,7 +33,7 @@ export function createGroup(name?: string, currency?: string): Group {
 }
 
 export function addMember(group: Group, displayName: string): Group {
-  const member = { id: "m" + nextMemberId++, name: String(displayName) };
+  const member: Member = { id: "m" + nextMemberId++, name: String(displayName) };
   return withMembers(group, group.members.concat([member]));
 }
 
@@ -43,8 +43,8 @@ export function removeMember(group: Group, memberId: string): Group {
     (e) => e.paidBy === memberId || e.participants.indexOf(memberId) !== -1
   );
   if (referenced) {
-    const err = new Error("member is referenced by an expense");
-    (err as any).code = "MEMBER_IN_USE";
+    const err: any = new Error("member is referenced by an expense");
+    err.code = "MEMBER_IN_USE";
     throw err;
   }
   return withMembers(
