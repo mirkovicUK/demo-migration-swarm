@@ -1,65 +1,104 @@
-// app.js - wires the DOM to the pure todo.js functions + storage.js
-// persistence. Vanilla JS, no framework, no build step (this is the
-// migration source; the target is Vite + TypeScript + Vitest).
+// app.js — DOM wiring for the expense splitter. Top of the dependency DAG:
+// imports group (state), format (display), parse (input), storage (persistence)
+// and money (amount construction). No exports — this is the entry module loaded
+// by index.html via <script type="module">.
 
-(function () {
-  const form = document.getElementById("todo-form");
-  const input = document.getElementById("todo-input");
-  const list = document.getElementById("todo-list");
-  const countEl = document.getElementById("todo-count");
-  const doneCountEl = document.getElementById("todo-done-count");
+import {
+  createGroup,
+  addMember,
+  addExpense,
+  removeExpense,
+  memberName,
+  groupTotal,
+  groupSettlement,
+} from "./group.js";
+import { formatMoney, formatSigned, pluralize } from "./format.js";
+import { parseExpenseLine } from "./parse.js";
+import { saveGroup, loadGroup } from "./storage.js";
 
-  let todos = loadTodos();
+let group = loadGroup() || seedGroup();
 
-  function render() {
-    list.innerHTML = "";
-    todos.forEach((todo) => {
-      const li = document.createElement("li");
-      li.className = todo.done ? "done" : "";
-      li.dataset.id = String(todo.id);
+function seedGroup() {
+  let g = createGroup("Trip to Lisbon", "EUR");
+  g = addMember(g, "Ada");
+  g = addMember(g, "Bruno");
+  g = addMember(g, "Chen");
+  return g;
+}
 
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = todo.done;
-      checkbox.addEventListener("change", () => {
-        todos = toggleTodo(todos, todo.id);
-        saveTodos(todos);
-        render();
-      });
+function render() {
+  const membersEl = document.getElementById("members");
+  const expensesEl = document.getElementById("expenses");
+  const settleEl = document.getElementById("settlement");
+  const totalEl = document.getElementById("total");
+  if (!membersEl || !expensesEl || !settleEl || !totalEl) return;
 
-      const span = document.createElement("span");
-      span.className = "todo-text";
-      span.textContent = todo.text;
+  membersEl.textContent = group.members.map((m) => m.name).join(", ");
+  totalEl.textContent =
+    formatMoney(groupTotal(group)) + " across " + pluralize(group.members.length, "person");
 
-      const removeBtn = document.createElement("button");
-      removeBtn.type = "button";
-      removeBtn.className = "remove-btn";
-      removeBtn.textContent = "\u00d7";
-      removeBtn.addEventListener("click", () => {
-        todos = removeTodo(todos, todo.id);
-        saveTodos(todos);
-        render();
-      });
-
-      li.appendChild(checkbox);
-      li.appendChild(span);
-      li.appendChild(removeBtn);
-      list.appendChild(li);
+  expensesEl.innerHTML = "";
+  group.expenses.forEach((e) => {
+    const li = document.createElement("li");
+    li.textContent =
+      e.description +
+      " — " +
+      formatMoney(e.amount) +
+      " (paid by " +
+      memberName(group, e.paidBy) +
+      ")";
+    const btn = document.createElement("button");
+    btn.textContent = "×";
+    btn.addEventListener("click", () => {
+      group = removeExpense(group, e.id);
+      persistAndRender();
     });
-
-    countEl.textContent = String(todos.length);
-    doneCountEl.textContent = String(countDone(todos));
-  }
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const value = input.value;
-    if (!value.trim()) return;
-    todos = addTodo(todos, value);
-    saveTodos(todos);
-    input.value = "";
-    render();
+    li.appendChild(btn);
+    expensesEl.appendChild(li);
   });
 
+  const summary = groupSettlement(group);
+  settleEl.innerHTML = "";
+  summary.transfers.forEach((t) => {
+    const li = document.createElement("li");
+    li.textContent =
+      memberName(group, t.from) +
+      " pays " +
+      memberName(group, t.to) +
+      " " +
+      formatSigned(t.amount);
+    settleEl.appendChild(li);
+  });
+}
+
+function persistAndRender() {
+  saveGroup(group);
   render();
-})();
+}
+
+function wire() {
+  const form = document.getElementById("expense-form");
+  const input = document.getElementById("expense-input");
+  if (!form || !input) return;
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const parsed = parseExpenseLine(input.value);
+    if (!parsed.ok) {
+      window.alert(parsed.error);
+      return;
+    }
+    const everyone = group.members.map((m) => m.id);
+    group = addExpense(group, {
+      description: parsed.value.description,
+      amount: parsed.value.amount,
+      paidBy: everyone[0],
+      participants: everyone,
+      split: { kind: "equal" },
+    });
+    input.value = "";
+    persistAndRender();
+  });
+}
+
+wire();
+render();

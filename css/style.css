@@ -3,7 +3,7 @@
   --card: #1e293b;
   --text: #e2e8f0;
   --accent: #38bdf8;
-  --done: #64748b;
+  --muted: #64748b;
 }
 
 * {
@@ -14,8 +14,9 @@ body {
   margin: 0;
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding: 3rem 1rem;
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -23,7 +24,7 @@ body {
 
 .app {
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
   padding: 2rem;
   background: var(--card);
   border-radius: 12px;
@@ -32,16 +33,28 @@ body {
 
 h1 {
   margin-top: 0;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
 }
 
-#todo-form {
+h2 {
+  font-size: 1rem;
+  color: #cbd5e1;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.members {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-top: 0;
+}
+
+#expense-form {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
-#todo-input {
+#expense-input {
   flex: 1;
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
@@ -64,41 +77,37 @@ button:hover {
   opacity: 0.9;
 }
 
-#todo-list {
+#expenses,
+#settlement {
   list-style: none;
   padding: 0;
-  margin: 0 0 1rem;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-#todo-list li {
+#expenses li,
+#settlement li {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
   background: #0f172a;
+  font-size: 0.9rem;
 }
 
-#todo-list li.done .todo-text {
-  text-decoration: line-through;
-  color: var(--done);
-}
-
-.todo-text {
-  flex: 1;
-}
-
-.remove-btn {
+#expenses li button {
   background: transparent;
   color: #f87171;
   font-weight: bold;
+  padding: 0.25rem 0.5rem;
 }
 
 .stats {
-  margin: 0;
+  margin: 0.75rem 0 0;
   font-size: 0.85rem;
   color: #94a3b8;
 }

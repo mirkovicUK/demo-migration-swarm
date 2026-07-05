@@ -3,24 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Todo Demo</title>
+  <title>Split — expense splitter</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <main class="app">
-    <h1>Todo List</h1>
-    <form id="todo-form">
-      <input id="todo-input" type="text" placeholder="Add a task..." required />
-      <button type="submit">Add</button>
+    <h1>Split</h1>
+    <p class="members">Members: <span id="members"></span></p>
+
+    <form id="expense-form">
+      <input
+        id="expense-input"
+        type="text"
+        placeholder="e.g. Dinner 42.50 eur"
+        required
+      />
+      <button type="submit">Add expense</button>
     </form>
-    <ul id="todo-list"></ul>
-    <p class="stats">
-      <span id="todo-count">0</span> item(s), <span id="todo-done-count">0</span> done
-    </p>
+
+    <h2>Expenses</h2>
+    <ul id="expenses"></ul>
+    <p class="stats">Total: <span id="total">0</span></p>
+
+    <h2>Settle up</h2>
+    <ul id="settlement"></ul>
   </main>
 
-  <script src="js/storage.js"></script>
-  <script src="js/todo.js"></script>
-  <script src="js/app.js"></script>
+  <!-- ES modules: app.js imports the whole dependency graph. No build step in
+       the source; the Migration Swarm turns this into Vite + TypeScript. -->
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,195 @@
+// balances.js — the settlement engine. Given a list of expenses, work out each
+// member's net position and then the minimal set of payments that settles all
+// debts. Depends on money.js, expense.js and split.js — the deepest node in the
+// chain, so it is migrated last and recalls the Decisions made for all three.
+
+import {
+  money,
+  zero,
+  add,
+  subtract,
+  negate,
+  isZero,
+  isPositive,
+  isNegative,
+  compare,
+  DEFAULT_CURRENCY,
+} from "./money.js";
+import { computeShares, sharesSumTo } from "./split.js";
+
+// Net balance per member: positive = the group owes them (they overpaid),
+// negative = they owe the group. Sums to zero across all members.
+// Returns { [memberId]: Money }.
+function computeBalances(expenses, currency) {
+  const cur = resolveCurrency(expenses, currency);
+  const net = {};
+
+  function bump(id, delta) {
+    if (!net[id]) net[id] = zero(cur);
+    net[id] = add(net[id], delta);
+  }
+
+  for (let i = 0; i < expenses.length; i++) {
+    const expense = expenses[i];
+    const shares = computeShares(expense);
+    if (!sharesSumTo(shares, expense.amount)) {
+      throw new Error("shares do not sum to amount for expense " + expense.id);
+    }
+    // The payer is credited the full amount they fronted...
+    bump(expense.paidBy, expense.amount);
+    // ...and every participant is debited their share.
+    const ids = Object.keys(shares);
+    for (let j = 0; j < ids.length; j++) {
+      bump(ids[j], negate(shares[ids[j]]));
+    }
+  }
+  return net;
+}
+
+// Turn net balances into a minimal-ish list of settlement transfers using a
+// greedy largest-creditor / largest-debtor match. Returns an array of
+// { from, to, amount } where `amount` is a positive Money.
+function simplifyDebts(balances) {
+  const entries = Object.keys(balances).map((id) => ({
+    id: id,
+    balance: balances[id],
+  }));
+  if (entries.length === 0) return [];
+
+  const currency = entries[0].balance.currency;
+  const creditors = [];
+  const debtors = [];
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (isPositive(e.balance)) {
+      creditors.push({ id: e.id, amount: e.balance });
+    } else if (isNegative(e.balance)) {
+      debtors.push({ id: e.id, amount: negate(e.balance) });
+    }
+  }
+
+  // Largest first so we clear big imbalances in fewer transfers.
+  creditors.sort((a, b) => compare(b.amount, a.amount));
+  debtors.sort((a, b) => compare(b.amount, a.amount));
+
+  const transfers = [];
+  let ci = 0;
+  let di = 0;
+  while (ci < creditors.length && di < debtors.length) {
+    const credit = creditors[ci];
+    const debt = debtors[di];
+    const pay = minMoney(credit.amount, debt.amount);
+    if (isPositive(pay)) {
+      transfers.push({ from: debt.id, to: credit.id, amount: pay });
+    }
+    credit.amount = subtract(credit.amount, pay);
+    debt.amount = subtract(debt.amount, pay);
+    if (isZero(credit.amount)) ci++;
+    if (isZero(debt.amount)) di++;
+  }
+  return transfers;
+}
+
+// Convenience: everything a UI needs in one shot.
+function settlementSummary(expenses, currency) {
+  const balances = computeBalances(expenses, currency);
+  const transfers = simplifyDebts(balances);
+  return {
+    balances: balances,
+    transfers: transfers,
+    transferCount: transfers.length,
+  };
+}
+
+// How much a single member owes (negative net) or is owed (positive net).
+function balanceFor(balances, memberId) {
+  return balances[memberId] || zero(DEFAULT_CURRENCY);
+}
+
+// Pairwise gross debt matrix BEFORE simplification: matrix[debtor][creditor] is
+// the Money the debtor owes the creditor across all expenses, attributing each
+// participant's share directly to the member who paid. Useful for a detailed
+// "who owes whom, and for what" breakdown in the UI, and a good check that
+// simplifyDebts never moves more money than actually changed hands.
+function debtMatrix(expenses, currency) {
+  const cur = resolveCurrency(expenses, currency);
+  const matrix = {};
+
+  function owe(debtor, creditor, amount) {
+    if (debtor === creditor) return;
+    if (!matrix[debtor]) matrix[debtor] = {};
+    if (!matrix[debtor][creditor]) matrix[debtor][creditor] = zero(cur);
+    matrix[debtor][creditor] = add(matrix[debtor][creditor], amount);
+  }
+
+  for (let i = 0; i < expenses.length; i++) {
+    const expense = expenses[i];
+    const shares = computeShares(expense);
+    const ids = Object.keys(shares);
+    for (let j = 0; j < ids.length; j++) {
+      // each participant owes their share to whoever paid
+      owe(ids[j], expense.paidBy, shares[ids[j]]);
+    }
+  }
+  return matrix;
+}
+
+// Total value of a list of transfers (used to sanity-check a settlement plan).
+function totalTransferred(transfers) {
+  if (transfers.length === 0) return zero(DEFAULT_CURRENCY);
+  let acc = zero(transfers[0].amount.currency);
+  for (let i = 0; i < transfers.length; i++) {
+    acc = add(acc, transfers[i].amount);
+  }
+  return acc;
+}
+
+// Validate that applying `transfers` to `balances` settles everyone to zero.
+// Returns { settled: boolean, residual: { [id]: Money } } so a UI can surface
+// any member the plan failed to clear (should never happen, but cheap to prove).
+function validateSettlement(balances, transfers) {
+  const residual = {};
+  const ids = Object.keys(balances);
+  for (let i = 0; i < ids.length; i++) {
+    residual[ids[i]] = balances[ids[i]];
+  }
+  for (let i = 0; i < transfers.length; i++) {
+    const t = transfers[i];
+    if (!residual[t.from]) residual[t.from] = zero(t.amount.currency);
+    if (!residual[t.to]) residual[t.to] = zero(t.amount.currency);
+    // a payment from debtor→creditor raises the debtor's net, lowers creditor's
+    residual[t.from] = add(residual[t.from], t.amount);
+    residual[t.to] = subtract(residual[t.to], t.amount);
+  }
+  let settled = true;
+  const rids = Object.keys(residual);
+  for (let i = 0; i < rids.length; i++) {
+    if (!isZero(residual[rids[i]])) {
+      settled = false;
+      break;
+    }
+  }
+  return { settled: settled, residual: residual };
+}
+
+function minMoney(a, b) {
+  return compare(a, b) <= 0 ? a : b;
+}
+
+function resolveCurrency(expenses, currency) {
+  if (currency) return currency;
+  if (expenses.length > 0 && expenses[0].amount) {
+    return expenses[0].amount.currency;
+  }
+  return DEFAULT_CURRENCY;
+}
+
+export {
+  computeBalances,
+  simplifyDebts,
+  settlementSummary,
+  balanceFor,
+  debtMatrix,
+  totalTransferred,
+  validateSettlement,
+};
