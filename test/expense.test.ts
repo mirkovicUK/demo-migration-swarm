@@ -1,6 +1,6 @@
 import { describe, it, assert } from "vitest";
-import { money } from "../js/money";
-import { createExpense, validateExpense, totalOf } from "../js/expense";
+import { money } from "../js/money.js";
+import { createExpense, validateExpense, totalOf } from "../js/expense.js";
 
 function baseInput(overrides) {
   return Object.assign(
@@ -16,7 +16,7 @@ function baseInput(overrides) {
 }
 
 describe("createExpense accepts a valid equal-split expense", () => {
-  it("creates expense with correct properties", () => {
+  it("should accept valid input", () => {
     const e = createExpense(baseInput());
     assert.equal(e.description, "Dinner");
     assert.equal(e.amount.amountMinor, 3000);
@@ -26,19 +26,19 @@ describe("createExpense accepts a valid equal-split expense", () => {
 });
 
 describe("createExpense rejects an empty description", () => {
-  it("throws error for empty description", () => {
+  it("should reject empty description", () => {
     assert.throws(() => createExpense(baseInput({ description: "  " })), /description/);
   });
 });
 
 describe("createExpense rejects a non-positive amount", () => {
-  it("throws error for zero amount", () => {
+  it("should reject non-positive amount", () => {
     assert.throws(() => createExpense(baseInput({ amount: money(0, "USD") })), /positive/);
   });
 });
 
 describe("validateExpense flags percentages that do not sum to 100", () => {
-  it("detects invalid percentage sum", () => {
+  it("should flag percentages not summing to 100", () => {
     const problems = validateExpense(
       baseInput({
         split: { kind: "percentage", values: { m1: 40, m2: 40 } },
@@ -49,7 +49,7 @@ describe("validateExpense flags percentages that do not sum to 100", () => {
 });
 
 describe("validateExpense flags exact amounts that do not sum to the total", () => {
-  it("detects mismatched exact amounts", () => {
+  it("should flag exact amounts not summing to total", () => {
     const problems = validateExpense(
       baseInput({
         split: {
@@ -63,14 +63,14 @@ describe("validateExpense flags exact amounts that do not sum to the total", () 
 });
 
 describe("payer-not-sharing is a soft warning, not a hard failure", () => {
-  it("allows payer not in participants", () => {
+  it("should allow payer not in participants", () => {
     const e = createExpense(baseInput({ paidBy: "m3" }));
     assert.equal(e.paidBy, "m3");
   });
 });
 
 describe("totalOf sums expense amounts", () => {
-  it("correctly sums expenses", () => {
+  it("should sum expense amounts correctly", () => {
     const a = createExpense(baseInput());
     const b = createExpense(baseInput({ amount: money(1500, "USD") }));
     assert.equal(totalOf([a, b], "USD").amountMinor, 4500);
