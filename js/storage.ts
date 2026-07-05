@@ -17,5 +17,3 @@ export function loadTodos(): Todo[] {
 export function saveTodos(todos: Todo[]): void {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
 }
-
-import { Todo } from './todo';
