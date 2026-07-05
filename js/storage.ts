@@ -3,7 +3,7 @@
 
 const STORAGE_KEY = "demo-migration-swarm.todos";
 
-export function loadTodos(): Todo[] {
+export function loadTodos(): Array<Todo> {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
@@ -14,6 +14,8 @@ export function loadTodos(): Todo[] {
   }
 }
 
-export function saveTodos(todos: Todo[]): void {
+export function saveTodos(todos: Array<Todo>): void {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
 }
+
+import { Todo } from './todo';
