@@ -38,7 +38,7 @@ describe('createExpense rejects a non-positive amount', () => {
 });
 
 describe('validateExpense flags percentages that do not sum to 100', () => {
-  it('should detect percentages not summing to 100', () => {
+  it('should detect percentage values not summing to 100', () => {
     const problems = validateExpense(
       baseInput({
         split: { kind: "percentage", values: { m1: 40, m2: 40 } },
@@ -63,7 +63,7 @@ describe('validateExpense flags exact amounts that do not sum to the total', () 
 });
 
 describe('payer-not-sharing is a soft warning, not a hard failure', () => {
-  it('should allow creation with payer not in participants', () => {
+  it('should allow payer not in participants', () => {
     const e = createExpense(baseInput({ paidBy: "m3" }));
     expect(e.paidBy).toBe("m3");
   });
