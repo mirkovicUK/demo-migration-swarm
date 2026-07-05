@@ -5,7 +5,7 @@
 
 import { createExpense, totalOf, type Expense, type ExpenseInput } from "./expense.js";
 import { settlementSummary, type SettlementSummary } from "./balances.js";
-import { DEFAULT_CURRENCY, type Money } from "./money.js";
+import type { Money } from "./money.js";
 
 let nextMemberId = 1;
 
@@ -26,7 +26,7 @@ export function createGroup(name?: string, currency?: string): Group {
   return {
     id: "g" + Date.now(),
     name: name ? String(name) : "Untitled group",
-    currency: currency || DEFAULT_CURRENCY,
+    currency: currency || "USD",
     members: [],
     expenses: [],
   };
