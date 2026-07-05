@@ -1,15 +1,9 @@
-// split.ts — turns an Expense's split rule into concrete per-participant Money
-// shares that sum EXACTLY to the expense amount. Depends on money.ts (for
-// allocate/multiply) and expense.ts (for the split kinds). Two import edges →
-// this node sits below both in the DAG.
+import { money, zero, allocate, multiply, add, equals } from "./money.js";
+import { isSplitKind } from "./expense.js";
+import type { Expense, SplitRule } from "./expense.js";
+import type { Money } from "./money.js";
 
-import { money, zero, allocate, multiply, add, equals, Money } from "./money.js";
-import { isSplitKind, Expense, SplitRule } from "./expense.js";
-
-// Compute { [participantId]: Money } shares for an expense. Guarantees the
-// shares sum back to expense.amount (no lost/created minor units), delegating
-// the remainder distribution to money.allocate for equal/shares/percentage.
-export function computeShares(expense: Expense): Record<string, Money> {
+function computeShares(expense: Expense): Record<string, Money> {
   const kind = expense.split.kind;
   if (!isSplitKind(kind)) {
     throw new Error("unknown split kind: " + kind);
@@ -36,11 +30,7 @@ function byEqual(amount: Money, participants: string[]): Record<string, Money> {
   return zip(participants, parts);
 }
 
-function byShares(
-  amount: Money,
-  participants: string[],
-  values: Record<string, unknown>
-): Record<string, Money> {
+function byShares(amount: Money, participants: string[], values: Record<string, unknown>): Record<string, Money> {
   const weights = participants.map((pid) => {
     const w = Number(values[pid]);
     if (!Number.isInteger(w) || w < 0) {
@@ -52,13 +42,7 @@ function byShares(
   return zip(participants, parts);
 }
 
-// Percentages can be fractional; multiply then fix any rounding drift by
-// pushing the leftover minor units onto the largest share (keeps the sum exact).
-function byPercentage(
-  amount: Money,
-  participants: string[],
-  values: Record<string, unknown>
-): Record<string, Money> {
+function byPercentage(amount: Money, participants: string[], values: Record<string, unknown>): Record<string, Money> {
   const shares: Record<string, Money> = {};
   let allocated = zero(amount.currency);
   let maxId = participants[0];
@@ -81,11 +65,7 @@ function byPercentage(
   return shares;
 }
 
-function byExact(
-  amount: Money,
-  participants: string[],
-  values: Record<string, unknown>
-): Record<string, Money> {
+function byExact(amount: Money, participants: string[], values: Record<string, unknown>): Record<string, Money> {
   const shares: Record<string, Money> = {};
   for (let i = 0; i < participants.length; i++) {
     const pid = participants[i];
@@ -95,12 +75,7 @@ function byExact(
   return shares;
 }
 
-// Verify a shares map sums exactly to the expected amount (used by tests and
-// balances.ts as a safety assertion).
-export function sharesSumTo(
-  shares: Record<string, Money>,
-  expected: Money
-): boolean {
+function sharesSumTo(shares: Record<string, Money>, expected: Money): boolean {
   let acc = zero(expected.currency);
   const keys = Object.keys(shares);
   for (let i = 0; i < keys.length; i++) {
@@ -117,8 +92,8 @@ function zip(ids: string[], parts: Money[]): Record<string, Money> {
   return out;
 }
 
-function isMoney(x: any): x is Money {
-  return (
-    !!x && typeof x === "object" && typeof x.amountMinor === "number" && typeof x.currency === "string"
-  );
+function isMoney(x: unknown): x is Money {
+  return !!x && typeof x === "object" && typeof (x as Money).amountMinor === "number";
 }
+
+export { computeShares, sharesSumTo };
