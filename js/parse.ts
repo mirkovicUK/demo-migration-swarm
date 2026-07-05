@@ -9,7 +9,23 @@
 // Depends on money.ts.
 
 import { fromDecimal, DEFAULT_CURRENCY, CURRENCY_MINOR_UNITS } from "./money.js";
-import type { Money } from "./money";
+import type { Money } from "./money.js";
+
+// Interfaces for the discriminated union return type
+export interface ParseSuccess {
+  ok: true;
+  value: {
+    description: string;
+    amount: Money;
+  };
+}
+
+export interface ParseFailure {
+  ok: false;
+  error: string;
+}
+
+export type ParseResult = ParseSuccess | ParseFailure;
 
 // token aliases → canonical currency codes; accessed dynamically by user token.
 export const CURRENCY_ALIASES: Record<string, string> = {
@@ -30,7 +46,7 @@ export const CURRENCY_ALIASES: Record<string, string> = {
 // Parse a line like "Groceries 42.50 eur" or "12 lunch".
 // Returns { ok: true, value: { description, amount } }
 //      or { ok: false, error: string }.  <-- conditional shape
-export function parseExpenseLine(line: unknown): { ok: true; value: { description: string; amount: Money; }; } | { ok: false; error: string; } {
+export function parseExpenseLine(line: unknown): ParseResult {
   if (line == null || String(line).trim() === "") {
     return { ok: false, error: "empty input" };
   }
