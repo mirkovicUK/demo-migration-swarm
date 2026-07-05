@@ -1,8 +1,9 @@
-// app.ts - wires the DOM to the pure todo functions + storage
+// js/app.ts - wires the DOM to the pure todo.ts functions + storage.ts
 // persistence. Vanilla JS, no framework, no build step (this is the
 // migration source; the target is Vite + TypeScript + Vitest).
 
-import { loadTodos, saveTodos, addTodo, toggleTodo, removeTodo, countDone } from './todo';
+import { loadTodos, saveTodos } from './storage';
+import { addTodo, toggleTodo, removeTodo, countDone } from './todo';
 
 function main(): void {
   const form = document.getElementById('todo-form') as HTMLFormElement;
@@ -10,11 +11,6 @@ function main(): void {
   const list = document.getElementById('todo-list') as HTMLUListElement;
   const countEl = document.getElementById('todo-count') as HTMLSpanElement;
   const doneCountEl = document.getElementById('todo-done-count') as HTMLSpanElement;
-
-  if (!form || !input || !list || !countEl || !doneCountEl) {
-    console.error('Required DOM elements not found');
-    return;
-  }
 
   let todos = loadTodos();
 
@@ -41,7 +37,7 @@ function main(): void {
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.className = 'remove-btn';
-      removeBtn.textContent = '×';
+      removeBtn.textContent = '\u00d7';
       removeBtn.addEventListener('click', () => {
         todos = removeTodo(todos, todo.id);
         saveTodos(todos);
@@ -71,4 +67,4 @@ function main(): void {
   render();
 }
 
-document.addEventListener('DOMContentLoaded', main);
+main();
