@@ -1,14 +1,7 @@
-// group.js — mutable-ish group state (members + expenses) on top of the pure
-// domain modules. Depends on expense.js and balances.js. Kept as plain data +
-// pure transition functions (each returns a new group) so it stays testable and
-// mirrors the todo.js style of the original demo.
-
-import { createExpense, totalOf } from "./expense.js";
-import { settlementSummary } from "./balances.js";
-import { DEFAULT_CURRENCY } from "./money.js";
-import { Money } from "./money.js";
-import { Expense, ExpenseInput } from "./expense.js";
-import { SettlementSummary } from "./balances.js";
+import { Money } from './money.js';
+import { Expense, ExpenseInput } from './expense.js';
+import { settlementSummary } from './balances.js';
+import { DEFAULT_CURRENCY } from './money.js';
 
 let nextMemberId = 1;
 
@@ -31,7 +24,6 @@ export function addMember(group: Group, displayName: string): Group {
 }
 
 export function removeMember(group: Group, memberId: string): Group {
-  // Refuse if the member is referenced by any expense (data integrity).
   const referenced = group.expenses.some(
     (e) => e.paidBy === memberId || e.participants.indexOf(memberId) !== -1
   );
@@ -47,9 +39,7 @@ export function removeMember(group: Group, memberId: string): Group {
 }
 
 export function addExpense(group: Group, input: ExpenseInput): Group {
-  const expense = createExpense(
-    Object.assign({}, input, { amount: input.amount })
-  );
+  const expense = input;
   return withExpenses(group, group.expenses.concat([expense]));
 }
 
@@ -66,7 +56,11 @@ export function memberName(group: Group, memberId: string): string {
 }
 
 export function groupTotal(group: Group): Money {
-  return totalOf(group.expenses, group.currency);
+  let total = { amountMinor: 0, currency: group.currency };
+  for (const expense of group.expenses) {
+    total.amountMinor += expense.amount.amountMinor;
+  }
+  return total;
 }
 
 export function groupSettlement(group: Group): SettlementSummary {
@@ -74,9 +68,9 @@ export function groupSettlement(group: Group): SettlementSummary {
 }
 
 function withMembers(group: Group, members: Member[]): Group {
-  return Object.assign({}, group, { members: members });
+  return { ...group, members: members };
 }
 
 function withExpenses(group: Group, expenses: Expense[]): Group {
-  return Object.assign({}, group, { expenses: expenses });
+  return { ...group, expenses: expenses };
 }
