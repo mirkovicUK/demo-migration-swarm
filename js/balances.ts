@@ -1,6 +1,6 @@
-// balances.js — the settlement engine. Given a list of expenses, work out each
+// balances.ts — the settlement engine. Given a list of expenses, work out each
 // member's net position and then the minimal set of payments that settles all
-// debts. Depends on money.js, expense.js and split.js — the deepest node in the
+// debts. Depends on money.ts, expense.ts and split.ts — the deepest node in the
 // chain, so it is migrated last and recalls the Decisions made for all three.
 
 import {
@@ -14,15 +14,32 @@ import {
   isNegative,
   compare,
   DEFAULT_CURRENCY,
-  type Money
+  type Money,
 } from "./money.js";
 import { computeShares, sharesSumTo } from "./split.js";
 import type { Expense } from "./expense.js";
 
+export interface Transfer {
+  from: string;
+  to: string;
+  amount: Money;
+}
+
+export interface SettlementSummary {
+  balances: Record<string, Money>;
+  transfers: Transfer[];
+  transferCount: number;
+}
+
+export interface SettlementValidation {
+  settled: boolean;
+  residual: Record<string, Money>;
+}
+
 // Net balance per member: positive = the group owes them (they overpaid),
 // negative = they owe the group. Sums to zero across all members.
 // Returns { [memberId]: Money }.
-function computeBalances(expenses: Expense[], currency?: string): Record<string, Money> {
+export function computeBalances(expenses: Expense[], currency?: string): Record<string, Money> {
   const cur = resolveCurrency(expenses, currency);
   const net: Record<string, Money> = {};
 
@@ -51,16 +68,15 @@ function computeBalances(expenses: Expense[], currency?: string): Record<string,
 // Turn net balances into a minimal-ish list of settlement transfers using a
 // greedy largest-creditor / largest-debtor match. Returns an array of
 // { from, to, amount } where `amount` is a positive Money.
-function simplifyDebts(balances: Record<string, Money>): Array<{ from: string; to: string; amount: Money }> {
+export function simplifyDebts(balances: Record<string, Money>): Transfer[] {
   const entries = Object.keys(balances).map((id) => ({
     id: id,
     balance: balances[id],
   }));
   if (entries.length === 0) return [];
 
-  const currency = entries[0].balance.currency;
-  const creditors: Array<{ id: string; amount: Money }> = [];
-  const debtors: Array<{ id: string; amount: Money }> = [];
+  const creditors: { id: string; amount: Money }[] = [];
+  const debtors: { id: string; amount: Money }[] = [];
   for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
     if (isPositive(e.balance)) {
@@ -74,7 +90,7 @@ function simplifyDebts(balances: Record<string, Money>): Array<{ from: string; t
   creditors.sort((a, b) => compare(b.amount, a.amount));
   debtors.sort((a, b) => compare(b.amount, a.amount));
 
-  const transfers: Array<{ from: string; to: string; amount: Money }> = [];
+  const transfers: Transfer[] = [];
   let ci = 0;
   let di = 0;
   while (ci < creditors.length && di < debtors.length) {
@@ -93,7 +109,7 @@ function simplifyDebts(balances: Record<string, Money>): Array<{ from: string; t
 }
 
 // Convenience: everything a UI needs in one shot.
-function settlementSummary(expenses: Expense[], currency?: string): { balances: Record<string, Money>, transfers: Array<{ from: string; to: string; amount: Money }>, transferCount: number } {
+export function settlementSummary(expenses: Expense[], currency?: string): SettlementSummary {
   const balances = computeBalances(expenses, currency);
   const transfers = simplifyDebts(balances);
   return {
@@ -104,7 +120,7 @@ function settlementSummary(expenses: Expense[], currency?: string): { balances: 
 }
 
 // How much a single member owes (negative net) or is owed (positive net).
-function balanceFor(balances: Record<string, Money>, memberId: string): Money {
+export function balanceFor(balances: Record<string, Money>, memberId: string): Money {
   return balances[memberId] || zero(DEFAULT_CURRENCY);
 }
 
@@ -113,7 +129,7 @@ function balanceFor(balances: Record<string, Money>, memberId: string): Money {
 // participant's share directly to the member who paid. Useful for a detailed
 // "who owes whom, and for what" breakdown in the UI, and a good check that
 // simplifyDebts never moves more money than actually changed hands.
-function debtMatrix(expenses: Expense[], currency?: string): Record<string, Record<string, Money>> {
+export function debtMatrix(expenses: Expense[], currency?: string): Record<string, Record<string, Money>> {
   const cur = resolveCurrency(expenses, currency);
   const matrix: Record<string, Record<string, Money>> = {};
 
@@ -137,7 +153,7 @@ function debtMatrix(expenses: Expense[], currency?: string): Record<string, Reco
 }
 
 // Total value of a list of transfers (used to sanity-check a settlement plan).
-function totalTransferred(transfers: Array<{ from: string; to: string; amount: Money }>): Money {
+export function totalTransferred(transfers: Transfer[]): Money {
   if (transfers.length === 0) return zero(DEFAULT_CURRENCY);
   let acc = zero(transfers[0].amount.currency);
   for (let i = 0; i < transfers.length; i++) {
@@ -149,7 +165,7 @@ function totalTransferred(transfers: Array<{ from: string; to: string; amount: M
 // Validate that applying `transfers` to `balances` settles everyone to zero.
 // Returns { settled: boolean, residual: { [id]: Money } } so a UI can surface
 // any member the plan failed to clear (should never happen, but cheap to prove).
-function validateSettlement(balances: Record<string, Money>, transfers: Array<{ from: string; to: string; amount: Money }>): { settled: boolean, residual: Record<string, Money> } {
+export function validateSettlement(balances: Record<string, Money>, transfers: Transfer[]): SettlementValidation {
   const residual: Record<string, Money> = {};
   const ids = Object.keys(balances);
   for (let i = 0; i < ids.length; i++) {
@@ -185,13 +201,3 @@ function resolveCurrency(expenses: Expense[], currency?: string): string {
   }
   return DEFAULT_CURRENCY;
 }
-
-export {
-  computeBalances,
-  simplifyDebts,
-  settlementSummary,
-  balanceFor,
-  debtMatrix,
-  totalTransferred,
-  validateSettlement,
-};
