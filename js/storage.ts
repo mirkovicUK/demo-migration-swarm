@@ -1,8 +1,5 @@
-// storage.ts — localStorage persistence for a group, plus lazy export/import.
-// Imports Money from the barrel (index.ts) so it participates in the re-export
-// edge, and uses a DYNAMIC import() to pull in backup.ts only when needed.
-
 import type { Group } from "./group.js";
+import { money } from "./money.js";
 
 export const STORAGE_KEY = "demo-migration-swarm.group";
 
@@ -21,13 +18,9 @@ export function loadGroup(): Group | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
-    // Rebuild amounts so integer-minor-unit invariants hold after a reload.
     const expenses = (parsed.expenses || []).map((e: any) =>
       Object.assign({}, e, {
-        amount: {
-          amountMinor: Math.round(e.amount.amountMinor),
-          currency: e.amount.currency
-        }
+        amount: money(Math.round(e.amount.amountMinor), e.amount.currency),
       })
     );
     return Object.assign({}, parsed, { expenses: expenses });
@@ -40,7 +33,6 @@ export function clearGroup(): void {
   window.localStorage.removeItem(STORAGE_KEY);
 }
 
-// Lazily load the backup module and export the group as a downloadable blob.
 export async function exportGroupToJSON(group: Group): Promise<string> {
   const backup = await import("./backup.js");
   return JSON.stringify(backup.exportGroup(group), null, 2);
