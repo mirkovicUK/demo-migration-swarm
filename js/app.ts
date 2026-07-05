@@ -1,17 +1,15 @@
-// app.ts - wires the DOM to the pure todo functions + storage
-// persistence. Vanilla JS, no framework, no build step (this is the
-// migration source; the target is Vite + TypeScript + Vitest).
+// js/app.ts - wires the DOM to the pure todo functions + storage persistence.
+import { loadTodos, saveTodos } from './storage';
+import { addTodo, toggleTodo, removeTodo, countDone, Todo } from './todo';
 
-import { loadTodos, saveTodos, toggleTodo, removeTodo, countDone, addTodo } from './storage';
-
-function main() {
+(() => {
   const form = document.getElementById('todo-form') as HTMLFormElement;
   const input = document.getElementById('todo-input') as HTMLInputElement;
   const list = document.getElementById('todo-list') as HTMLUListElement;
-  const countEl = document.getElementById('todo-count') as HTMLElement;
-  const doneCountEl = document.getElementById('todo-done-count') as HTMLElement;
+  const countEl = document.getElementById('todo-count') as HTMLSpanElement;
+  const doneCountEl = document.getElementById('todo-done-count') as HTMLSpanElement;
 
-  let todos = loadTodos();
+  let todos: Todo[] = loadTodos();
 
   function render() {
     list.innerHTML = '';
@@ -64,6 +62,4 @@ function main() {
   });
 
   render();
-}
-
-main();
+})();
