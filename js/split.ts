@@ -1,7 +1,7 @@
 import { money, zero, allocate, multiply, add, equals, type Money } from "./money.js";
 import { isSplitKind, type Expense, type SplitKind, type SplitRule } from "./expense.js";
 
-export function computeShares(expense: Expense): Record<string, Money> {
+function computeShares(expense: Expense): Record<string, Money> {
   const kind = expense.split.kind;
   if (!isSplitKind(kind)) {
     throw new Error("unknown split kind: " + kind);
@@ -73,7 +73,7 @@ function byExact(amount: Money, participants: string[], values: Record<string, n
   return shares;
 }
 
-export function sharesSumTo(shares: Record<string, Money>, expected: Money): boolean {
+function sharesSumTo(shares: Record<string, Money>, expected: Money): boolean {
   let acc = zero(expected.currency);
   const keys = Object.keys(shares);
   for (let i = 0; i < keys.length; i++) {
@@ -93,3 +93,5 @@ function zip(ids: string[], parts: Money[]): Record<string, Money> {
 function isMoney(x: unknown): x is Money {
   return !!x && typeof x === "object" && typeof (x as Money).amountMinor === "number";
 }
+
+export { computeShares, sharesSumTo };
