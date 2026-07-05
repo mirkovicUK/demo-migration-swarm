@@ -1,9 +1,9 @@
-// money.ts — the "hot" shared module. Almost every other module imports Money
+// money.js — the "hot" shared module. Almost every other module imports Money
 // and its arithmetic, so this is the natural first Migration_Unit: once the
 // swarm decides how to TYPE Money (integer minor units + currency code), every
 // downstream consumer must conform to that decision. This is exactly the file
 // whose migration Decision the agents recall (via the distributed vector index)
-// while rewriting expense.ts / split.ts / balances.ts.
+// while rewriting expense.js / split.js / balances.js.
 //
 // Design: money is stored as an integer number of MINOR units (cents) plus an
 // ISO-4217-ish currency code. Never use floats for money. All arithmetic is
@@ -19,14 +19,12 @@ export const CURRENCY_MINOR_UNITS: Record<string, number> = {
   KWD: 3,
 };
 
-export const DEFAULT_CURRENCY: string = "USD";
+export const DEFAULT_CURRENCY = "USD";
 
 export interface Money {
   amountMinor: number;
   currency: string;
 }
-
-export type CurrencyCode = string;
 
 export function minorUnitsFor(currency: string): number {
   const digits = CURRENCY_MINOR_UNITS[currency];
@@ -144,7 +142,7 @@ export function compare(a: Money, b: Money): -1 | 0 | 1 {
   return 0;
 }
 
-export function equals(a: Money, b: Money): boolean {
+export function equals(a: Money | undefined, b: Money | undefined): boolean {
   return (
     !!a &&
     !!b &&
@@ -166,7 +164,7 @@ export function sum(list: Money[], currency?: string): Money {
 // integer weights, distributing any leftover minor units one-by-one to the
 // earliest parts (the classic "largest remainder" money-split so the parts sum
 // EXACTLY back to the original — no cents lost or invented). This is the tricky
-// bit the tests pin down, and the reason balances.ts/split.ts lean on money.ts.
+// bit the tests pin down, and the reason balances.js/split.js lean on money.js.
 export function allocate(m: Money, weights: number[]): Money[] {
   assertMoney(m);
   if (!Array.isArray(weights) || weights.length === 0) {
