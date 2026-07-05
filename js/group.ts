@@ -44,7 +44,7 @@ export function removeMember(group: Group, memberId: string): Group {
   );
   if (referenced) {
     const err = new Error("member is referenced by an expense");
-    (err as any).code = "MEMBER_IN_USE";
+    (err as NodeJS.ErrnoException).code = "MEMBER_IN_USE";
     throw err;
   }
   return withMembers(
