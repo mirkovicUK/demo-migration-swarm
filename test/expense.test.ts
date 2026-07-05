@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { money } from "../js/money";
-import { createExpense, validateExpense, totalOf } from "../js/expense";
 
-function baseInput(overrides) {
+import { money } from "../js/money.js";
+import { createExpense, validateExpense, totalOf, Expense } from "../js/expense.js";
+
+function baseInput(overrides: any = {}): any {
   return Object.assign(
     {
       description: "Dinner",
@@ -11,34 +12,30 @@ function baseInput(overrides) {
       participants: ["m1", "m2"],
       split: { kind: "equal" },
     },
-    overrides || {}
+    overrides
   );
 }
 
-describe("createExpense accepts a valid equal-split expense", () => {
-  it("should create expense with correct properties", () => {
+describe("createExpense", () => {
+  it("accepts a valid equal-split expense", () => {
     const e = createExpense(baseInput());
     expect(e.description).toBe("Dinner");
     expect(e.amount.amountMinor).toBe(3000);
     expect(e.split.kind).toBe("equal");
     expect(e.date instanceof Date).toBe(true);
   });
-});
 
-describe("createExpense rejects an empty description", () => {
-  it("should throw error for empty description", () => {
+  it("rejects an empty description", () => {
     expect(() => createExpense(baseInput({ description: "  " }))).toThrow(/description/);
   });
-});
 
-describe("createExpense rejects a non-positive amount", () => {
-  it("should throw error for non-positive amount", () => {
+  it("rejects a non-positive amount", () => {
     expect(() => createExpense(baseInput({ amount: money(0, "USD") }))).toThrow(/positive/);
   });
 });
 
-describe("validateExpense flags percentages that do not sum to 100", () => {
-  it("should detect percentage sum not equal to 100", () => {
+describe("validateExpense", () => {
+  it("flags percentages that do not sum to 100", () => {
     const problems = validateExpense(
       baseInput({
         split: { kind: "percentage", values: { m1: 40, m2: 40 } },
@@ -46,10 +43,8 @@ describe("validateExpense flags percentages that do not sum to 100", () => {
     );
     expect(problems.some((p) => p.code === "PERCENT_NOT_100")).toBe(true);
   });
-});
 
-describe("validateExpense flags exact amounts that do not sum to the total", () => {
-  it("should detect exact amounts sum mismatch", () => {
+  it("flags exact amounts that do not sum to the total", () => {
     const problems = validateExpense(
       baseInput({
         split: {
@@ -60,17 +55,16 @@ describe("validateExpense flags exact amounts that do not sum to the total", () 
     );
     expect(problems.some((p) => p.code === "EXACT_MISMATCH")).toBe(true);
   });
-});
 
-describe("payer-not-sharing is a soft warning, not a hard failure", () => {
-  it("should allow payer not in participants", () => {
+  it("payer-not-sharing is a soft warning, not a hard failure", () => {
+    // paidBy is m3 who is not a participant → creation should still succeed.
     const e = createExpense(baseInput({ paidBy: "m3" }));
     expect(e.paidBy).toBe("m3");
   });
 });
 
-describe("totalOf sums expense amounts", () => {
-  it("should sum expenses correctly", () => {
+describe("totalOf", () => {
+  it("sums expense amounts", () => {
     const a = createExpense(baseInput());
     const b = createExpense(baseInput({ amount: money(1500, "USD") }));
     expect(totalOf([a, b], "USD").amountMinor).toBe(4500);
