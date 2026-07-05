@@ -3,6 +3,12 @@
 
 const STORAGE_KEY = "demo-migration-swarm.todos";
 
+export interface Todo {
+  id: number;
+  text: string;
+  done: boolean;
+}
+
 export function loadTodos(): Todo[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
