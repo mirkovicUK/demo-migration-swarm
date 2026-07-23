@@ -23,13 +23,13 @@ export function computeShares(expense: Expense): Record<string, Money> {
     return byEqual(amount, participants);
   }
   if (kind === "shares") {
-    return byShares(amount, participants, expense.split.values ?? {});
+    return byShares(amount, participants, expense.split.values as Record<string, number | Money>);
   }
   if (kind === "percentage") {
-    return byPercentage(amount, participants, expense.split.values ?? {});
+    return byPercentage(amount, participants, expense.split.values as Record<string, number | Money>);
   }
   // exact
-  return byExact(amount, participants, expense.split.values ?? {});
+  return byExact(amount, participants, expense.split.values as Record<string, number | Money>);
 }
 
 function byEqual(amount: Money, participants: string[]): Record<string, Money> {
@@ -38,11 +38,7 @@ function byEqual(amount: Money, participants: string[]): Record<string, Money> {
   return zip(participants, parts);
 }
 
-function byShares(
-  amount: Money,
-  participants: string[],
-  values: Record<string, number>
-): Record<string, Money> {
+function byShares(amount: Money, participants: string[], values: Record<string, number | Money>): Record<string, Money> {
   const weights = participants.map((pid) => {
     const w = Number(values[pid]);
     if (!Number.isInteger(w) || w < 0) {
@@ -56,11 +52,7 @@ function byShares(
 
 // Percentages can be fractional; multiply then fix any rounding drift by
 // pushing the leftover minor units onto the largest share (keeps the sum exact).
-function byPercentage(
-  amount: Money,
-  participants: string[],
-  values: Record<string, number>
-): Record<string, Money> {
+function byPercentage(amount: Money, participants: string[], values: Record<string, number | Money>): Record<string, Money> {
   const shares: Record<string, Money> = {};
   let allocated = zero(amount.currency);
   let maxId = participants[0];
@@ -83,11 +75,7 @@ function byPercentage(
   return shares;
 }
 
-function byExact(
-  amount: Money,
-  participants: string[],
-  values: Record<string, number | Money>
-): Record<string, Money> {
+function byExact(amount: Money, participants: string[], values: Record<string, number | Money>): Record<string, Money> {
   const shares: Record<string, Money> = {};
   for (let i = 0; i < participants.length; i++) {
     const pid = participants[i];
@@ -99,10 +87,7 @@ function byExact(
 
 // Verify a shares map sums exactly to the expected amount (used by tests and
 // balances.ts as a safety assertion).
-export function sharesSumTo(
-  shares: Record<string, Money>,
-  expected: Money
-): boolean {
+export function sharesSumTo(shares: Record<string, Money>, expected: Money): boolean {
   let acc = zero(expected.currency);
   const keys = Object.keys(shares);
   for (let i = 0; i < keys.length; i++) {
@@ -120,10 +105,5 @@ function zip(ids: string[], parts: Money[]): Record<string, Money> {
 }
 
 function isMoney(x: unknown): x is Money {
-  return (
-    !!x &&
-    typeof x === "object" &&
-    typeof (x as Money).amountMinor === "number" &&
-    typeof (x as Money).currency === "string"
-  );
+  return !!x && typeof x === "object" && typeof (x as Money).amountMinor === "number";
 }
