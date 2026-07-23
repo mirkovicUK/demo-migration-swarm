@@ -1,3 +1,8 @@
+// app.ts — DOM wiring for the expense splitter. Top of the dependency DAG:
+// imports group (state), format (display), parse (input), storage (persistence)
+// and money (amount construction). No exports — this is the entry module loaded
+// by index.html via <script type="module">.
+
 import {
   createGroup,
   addMember,
@@ -6,10 +11,10 @@ import {
   memberName,
   groupTotal,
   groupSettlement,
-  Group,
 } from "./group.js";
+import type { Group } from "./group.js";
 import { formatMoney, formatSigned, pluralize } from "./format.js";
-import { parseExpenseLine, ParseResult } from "./parse.js";
+import { parseExpenseLine } from "./parse.js";
 import { saveGroup, loadGroup } from "./storage.js";
 
 let group: Group = loadGroup() || seedGroup();
@@ -23,10 +28,10 @@ function seedGroup(): Group {
 }
 
 function render(): void {
-  const membersEl = document.getElementById("members") as HTMLElement | null;
-  const expensesEl = document.getElementById("expenses") as HTMLElement | null;
-  const settleEl = document.getElementById("settlement") as HTMLElement | null;
-  const totalEl = document.getElementById("total") as HTMLElement | null;
+  const membersEl = document.getElementById("members");
+  const expensesEl = document.getElementById("expenses");
+  const settleEl = document.getElementById("settlement");
+  const totalEl = document.getElementById("total");
   if (!membersEl || !expensesEl || !settleEl || !totalEl) return;
 
   membersEl.textContent = group.members.map((m) => m.name).join(", ");
@@ -73,7 +78,7 @@ function persistAndRender(): void {
 }
 
 function wire(): void {
-  const form = document.getElementById("expense-form") as HTMLFormElement | null;
+  const form = document.getElementById("expense-form");
   const input = document.getElementById("expense-input") as HTMLInputElement | null;
   if (!form || !input) return;
   form.addEventListener("submit", (event) => {
