@@ -34,13 +34,7 @@ export const CURRENCY_ALIASES: Record<string, string> = {
 // Parse a line like "Groceries 42.50 eur" or "12 lunch".
 // Returns { ok: true, value: { description, amount } }
 //      or { ok: false, error: string }.  <-- conditional shape
-export function parseExpenseLine(line: unknown): {
-  ok: true;
-  value: { description: string; amount: Money };
-} | {
-  ok: false;
-  error: string;
-} {
+export function parseExpenseLine(line: unknown): ParseResult {
   if (line == null || String(line).trim() === "") {
     return { ok: false, error: "empty input" };
   }
@@ -86,10 +80,21 @@ export function parseExpenseLine(line: unknown): {
 // (Loose on purpose — mirrors real-world defensive parsing.)
 export function toCount(value: unknown, fallback?: number): number {
   const n = Number(value);
-  if (!isFinite(n) || n <= 0) return fallback == null ? 1 : fallback;
+  if (!isFinite(n) || n <= 0)
+    return fallback == null ? 1 : fallback as number;
   return Math.floor(n);
 }
 
 function looksNumeric(token: string): boolean {
   return /^\d+(\.\d+)?$/.test(token);
 }
+
+export interface ParseSuccess {
+  ok: true;
+  value: { description: string; amount: Money };
+}
+export interface ParseFailure {
+  ok: false;
+  error: string;
+}
+export type ParseResult = ParseSuccess | ParseFailure;
